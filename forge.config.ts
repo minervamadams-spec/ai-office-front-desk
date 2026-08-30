@@ -55,6 +55,10 @@ const config: ForgeConfig = {
           }
           fs.cpSync(path.join(dashboardSource, 'config', 'examples'), path.join(dashboardTarget, 'config', 'examples'), { recursive: true });
           fs.cpSync(path.join(dashboardSource, 'data', 'examples'), path.join(dashboardTarget, 'data', 'examples'), { recursive: true });
+          // "Explore with examples" in the wizard needs these too — same never-her-real-data rule,
+          // this is clearly-fake illustrative content, not anything from her own instance.
+          fs.cpSync(path.join(dashboardSource, 'config', 'examples-populated'), path.join(dashboardTarget, 'config', 'examples-populated'), { recursive: true });
+          fs.cpSync(path.join(dashboardSource, 'data', 'examples-populated'), path.join(dashboardTarget, 'data', 'examples-populated'), { recursive: true });
         } else {
           console.warn('portfolio-dashboard checkout not found beside this repo — packaging without the bundled generic dashboard.');
         }

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.13.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **"Explore with examples" in the generic dashboard's first-run wizard** — closes a parity gap
+  against the old built-in desk's wizard. Populates the desk with clearly-fake illustrative content
+  (quick links, notes, a financials snapshot) so you can see what a filled-in Front Desk looks like
+  before connecting anything real.
+
+### Fixed
+
+- `docs/PRIVACY.md` and `docs/DATA-HANDLING.md` now accurately describe both desk modes — the
+  generic dashboard stores connector credentials as plain files, not OS-keychain-encrypted like the
+  original renderer, and both docs previously only described the latter.
+
 ## 0.12.0 — 2026-08-30 (unsigned)
 
 ### Changed
