@@ -35,6 +35,16 @@ if (process.env.FRONT_DESK_TEST_USER_DATA_DIR) {
   app.setPath('userData', process.env.FRONT_DESK_TEST_USER_DATA_DIR);
 }
 
+// Safety net: update-electron-app calls Squirrel.Mac's autoUpdater.setFeedURL() from inside its own
+// app.on('ready', ...) handler, which throws synchronously ("Could not get code signature for
+// running application") for an unsigned build that macOS has translocated — which is the ORDINARY
+// case for anyone who opens a downloaded/unzipped app without first dragging it to Applications,
+// not an edge case. An uncaught exception in any app.on() handler crashes the whole main process
+// with Electron's default JS-error dialog; a background update check failing must never do that.
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception in main process (app keeps running):', error);
+});
+
 // Set this to 'owner/repo' once a real GitHub repo exists with published releases (see README's
 // "Auto-updates" section) — until then this stays empty and no update checks ever run, so an
 // unconfigured build behaves exactly as it did before this was added.

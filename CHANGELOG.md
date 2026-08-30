@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.2 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **"A JavaScript error occurred in the main process" on launch** — `update-electron-app` calls
+  Squirrel.Mac's `autoUpdater.setFeedURL()` from inside its own `app.on('ready', ...)` handler,
+  which throws synchronously ("Could not get code signature for running application") for an
+  unsigned build that macOS has translocated. Translocation isn't an edge case — it's the ordinary
+  result of opening a downloaded/unzipped app without first dragging it to Applications. Reproduced
+  directly (quarantined a copy, confirmed the real `.../AppTranslocation/.../` launch path, watched
+  it crash) and fixed with a process-level `uncaughtException` handler: a background update check
+  failing must never take down the whole app. Until the app is code-signed, expect update checks to
+  silently fail rather than silently succeed — but the app itself will never crash because of it.
+- If macOS instead says **"'AI Office Front Desk' is damaged and can't be opened"** — that's
+  Gatekeeper's separate, stricter rejection of unsigned software, not actual file corruption. The
+  standard fix: `xattr -cr "/path/to/AI Office Front Desk.app"` in Terminal, then open normally.
+
 ## 0.1.1 — 2026-08-30 (unsigned)
 
 ### Fixed

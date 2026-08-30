@@ -45,7 +45,10 @@ const config: ForgeConfig = {
   },
   makers: [
     new MakerZIP({}, ['darwin']),
-    new MakerDMG({ icon: 'assets/icon.icns', name: 'AI Office Front Desk' }),
+    // No `name:` override — MakerDMG bakes a fixed name in when one's set, so an arm64 and an x64
+    // build collide on the exact same filename and one silently overwrites the other on upload.
+    // Leaving it unset gets forge's own default, which includes the version and arch.
+    new MakerDMG({ icon: 'assets/icon.icns' }),
     new MakerSquirrel({ name: 'AIOfficeFrontDesk', setupIcon: 'assets/icon.ico' })
   ],
   // draft: false matters — update.electronjs.org (what update-electron-app checks against) only
