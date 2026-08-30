@@ -60,13 +60,34 @@ let secrets: SecretStore;
 let dashboardServer: ChildProcess | undefined;
 const allowedExternalUrls = new Set(connectorCatalog.flatMap((connector) => connector.officialSetupUrl ? [connector.officialSetupUrl] : []));
 
-// Overridable because port 4173 is a global, machine-wide resource — anything already listening
-// there (a real Portfolio Dashboard from a previous launch, a dev server, another app entirely)
-// would otherwise look "available" to an unrelated instance of this app, including test runs.
-const dashboardUrl = process.env.FRONT_DESK_DASHBOARD_URL || 'http://127.0.0.1:4173';
+// Test runs override this directly so they never depend on — or race — whatever's actually running
+// on a real machine. Real launches instead discover the port dynamically (see resolveDashboardUrl):
+// a hardcoded guess is exactly what caused a real installed copy to spawn a redundant, competing
+// second instance on 2026-08-30 when the real one happened to be running on a different port.
+const dashboardUrlOverride = process.env.FRONT_DESK_DASHBOARD_URL;
 
 function dashboardRoot(): string {
   return process.env.FRONT_DESK_DASHBOARD_ROOT || path.join(app.getPath('home'), 'Projects', 'GitHub', 'portfolio-dashboard');
+}
+
+/** Reads the same `data/rebuild.lock` file `portfolio-dashboard`'s own serve.js writes (pid + the
+ * port it's actually listening on) so an already-running instance is always found and reused,
+ * regardless of which port it happens to be on — no more hardcoded-port guessing. */
+function discoverDashboardPort(root: string): number | null {
+  try {
+    const lock = JSON.parse(fs.readFileSync(path.join(root, 'data', 'rebuild.lock'), 'utf8')) as { pid?: number; port?: number };
+    if (typeof lock.port !== 'number' || typeof lock.pid !== 'number') return null;
+    process.kill(lock.pid, 0); // throws if that pid is no longer running — a stale lock, ignore its port
+    return lock.port;
+  } catch {
+    return null;
+  }
+}
+
+function resolveDashboardUrl(): string {
+  if (dashboardUrlOverride) return dashboardUrlOverride;
+  const discoveredPort = discoverDashboardPort(dashboardRoot());
+  return `http://127.0.0.1:${discoveredPort ?? 4173}`;
 }
 
 const execFileAsync = promisify(execFile);
@@ -89,24 +110,25 @@ async function listChromeProfiles(): Promise<ChromeProfileInfo[]> {
   }
 }
 
-async function dashboardIsAvailable(): Promise<boolean> {
+async function dashboardIsAvailable(url: string): Promise<boolean> {
   try {
-    const response = await fetch(`${dashboardUrl}/api/desk-preferences`);
+    const response = await fetch(`${url}/api/desk-preferences`);
     return response.ok;
   } catch {
     return false;
   }
 }
 
-type DashboardStartResult = 'started' | 'unavailable' | 'not-configured';
+type DashboardStartResult = { status: 'started' | 'unavailable' | 'not-configured'; url: string };
 
 /** Most installs will never have a Portfolio Dashboard checkout — that's the ordinary, expected
  * case for anyone besides its one developer machine, not an error worth interrupting a first
  * launch over. Only 'unavailable' (found the script, but it failed to come up) is worth a dialog. */
 async function ensureDashboardServer(): Promise<DashboardStartResult> {
-  if (await dashboardIsAvailable()) return 'started';
+  const url = resolveDashboardUrl();
+  if (await dashboardIsAvailable(url)) return { status: 'started', url };
   const root = dashboardRoot();
-  if (!fs.existsSync(path.join(root, 'scripts', 'serve.js'))) return 'not-configured';
+  if (!fs.existsSync(path.join(root, 'scripts', 'serve.js'))) return { status: 'not-configured', url };
   dashboardServer = spawn(process.execPath, ['scripts/serve.js'], {
     cwd: root,
     detached: false,
@@ -115,9 +137,12 @@ async function ensureDashboardServer(): Promise<DashboardStartResult> {
   });
   for (let attempt = 0; attempt < 20; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 250));
-    if (await dashboardIsAvailable()) return 'started';
+    // The spawned instance always binds the default port (no PORT env override here), but re-resolve
+    // anyway in case a separately-started real instance won the rebuild lock in the meantime.
+    const settledUrl = resolveDashboardUrl();
+    if (await dashboardIsAvailable(settledUrl)) return { status: 'started', url: settledUrl };
   }
-  return 'unavailable';
+  return { status: 'unavailable', url };
 }
 
 async function createWindow(): Promise<void> {
@@ -137,11 +162,11 @@ async function createWindow(): Promise<void> {
     return;
   }
   const dashboardResult = await ensureDashboardServer();
-  if (dashboardResult === 'started') {
-    void window.loadURL(dashboardUrl);
+  if (dashboardResult.status === 'started') {
+    void window.loadURL(dashboardResult.url);
     return;
   }
-  if (dashboardResult === 'unavailable') {
+  if (dashboardResult.status === 'unavailable') {
     await dialog.showMessageBox(window, {
       type: 'warning',
       message: 'Your local Portfolio Dashboard could not be started.',

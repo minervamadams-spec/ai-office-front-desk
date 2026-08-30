@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.1 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **Background color was too dark.** The built-in fallback dashboard's background is now `#f2f3f5`,
+  matching the Portfolio Dashboard's own real branding color (`--paper` in its stylesheet) exactly,
+  instead of a guessed sandalwood tone.
+- **A real installed copy could spawn a redundant, competing Portfolio Dashboard server process.**
+  This app previously always checked a hardcoded port (4173) for an already-running dashboard before
+  deciding to start its own — if the real one happened to be running on a different port (as it was
+  on 2026-08-30, started by another tool on 4174), this app couldn't find it, concluded nothing was
+  running, and spawned a second, competing instance. It now reads the same lock file the dashboard's
+  own server writes (which records the port it's actually listening on) and connects to that instance
+  directly — no more guessing, no more duplicate servers, and one real installed app (in
+  `/Applications`, not a scratch test copy) is now the single, permanent, Dock-pinned icon for this on
+  Minerva's machine, the same package anyone else installs.
+
 ## 0.4.0 — 2026-08-30 (unsigned)
 
 ### Added
