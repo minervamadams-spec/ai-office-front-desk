@@ -16,12 +16,12 @@ test('a Quick Launch "local app" entry persists across a relaunch', async () => 
   await addForm.getByLabel('Link name').fill('Roblox');
   await addForm.getByLabel('App name').fill('Roblox');
   await addForm.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(window.getByText('Roblox', { exact: true })).toBeVisible();
+  await expect(window.getByText('Roblox')).toBeVisible();
   await app.close();
 
   // Reopen against the same profile — this is the real test: does it persist, not just render once.
   app = await launchApp(userDataDir);
   window = await app.firstWindow();
-  await expect(window.getByText('Roblox', { exact: true })).toBeVisible();
+  await expect(window.getByText('Roblox')).toBeVisible();
   await app.close();
 });

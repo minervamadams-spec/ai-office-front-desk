@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **Cards can now be dragged and dropped directly on the live Dashboard** — no trip to Settings
+  needed to rearrange. Dragging one card onto another reorders it there and switches columns if
+  dropped into the other one; dragging into empty space at the bottom of a column moves it to the
+  end of that column. The same reordering logic now backs both the Dashboard and the Settings/
+  Wizard layout editor, so "move a card" only has one implementation.
+- **"✨ Ask AI for ideas"** on Routines, Projects & tasks, Notes, Affirmations, and Focus — expands
+  to a copyable, tailored prompt for that card. This app has no AI API of its own, so it's a real
+  copy-and-paste prompt rather than a fake pre-filled deep-link into any particular AI tool.
+- Quick Launch entries are now compact chips with a colored icon badge (keyword-matched generic
+  glyph, not a fetched brand logo) instead of a stacked list of plain text links.
+
+### Changed
+
+- The left column of the two-column layout is now wider (about 1.8:1) to match the emphasis most
+  installers give their primary cards.
+- General visual polish: rounder corners and subtle shadows on cards, slightly larger/rounder
+  buttons and input fields, and a pressed/disabled state on buttons.
+
 ## 0.2.0 — 2026-08-30 (unsigned)
 
 ### Added

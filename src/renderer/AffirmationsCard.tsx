@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AffirmationItem } from '../shared/contracts';
 import { sampleAffirmations } from '../shared/contracts';
+import { AiNudge } from './AiNudge';
 
 function dayOfYear(date: Date): number {
   const start = new Date(date.getFullYear(), 0, 0);
@@ -60,5 +61,6 @@ export function AffirmationsCard({ affirmations, useSampleData, onUpdateAffirmat
     {affirmations.length === 0 && !useSampleData && <p className="intro sample-note">No affirmations yet.</p>}
     {affirmations.length > 0 && <ul className="routine-list">{affirmations.map((item) => <AffirmationRow key={item.id} item={item} onSave={saveAffirmation} onDelete={() => deleteAffirmation(item.id)}/>)}</ul>}
     <AddAffirmationForm onAdd={addAffirmation}/>
+    <AiNudge prompt="Write 3-5 short, genuine daily affirmations for me — one sentence each, plain and specific rather than generic, no clichés."/>
   </section>;
 }

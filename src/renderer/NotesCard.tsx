@@ -6,5 +6,6 @@ export function NotesCard({ items, useSampleData, onUpdate }: {
   items: RoutineItem[]; useSampleData: boolean; onUpdate: (items: RoutineItem[]) => void;
 }) {
   return <ListCard eyebrow="NOTES" heading="Notes" items={items} useSampleData={useSampleData} sampleItems={sampleNotes} onUpdate={onUpdate}
-    titlePlaceholder="Note" detailPlaceholder="e.g. Last edited 2 days ago" addButtonLabel="Add note" emptyMessage="No notes yet."/>;
+    titlePlaceholder="Note" detailPlaceholder="e.g. Last edited 2 days ago" addButtonLabel="Add note" emptyMessage="No notes yet."
+    aiPrompt="Help me brainstorm 3-5 quick notes worth capturing right now. For each one give a short title and a one-line detail."/>;
 }

@@ -1,10 +1,12 @@
-import type { ConnectorState, DeskProfile, GoogleState, OutlookState, RoutineItem, AffirmationItem, QuickLaunchItem, WeatherState, RssState } from '../shared/contracts';
+import { useState } from 'react';
+import type { ConnectorState, DeskDesign, DeskProfile, GoogleState, OutlookState, RoutineItem, AffirmationItem, QuickLaunchItem, WeatherState, RssState } from '../shared/contracts';
 import { FocusCard } from './FocusCard';
 import { ProjectsCard } from './ProjectsCard';
 import { NotesCard } from './NotesCard';
 import { RoutinesCard } from './RoutinesCard';
 import { AffirmationsCard } from './AffirmationsCard';
 import { QuickLaunchCard } from './QuickLaunchCard';
+import { reorderCards } from './cardOrdering';
 
 function WeatherCard({ weather, onSync, onDisconnect }: { weather: WeatherState; onSync: () => Promise<void>; onDisconnect: () => Promise<void> }) {
   if (weather.status !== 'connected' && weather.status !== 'error') return null; // configure from Settings, not here
@@ -82,7 +84,7 @@ function ConnectionsCard({ jira, google, outlook, onSyncJira, onDisconnectJira, 
   </section>;
 }
 
-export function Dashboard({ profile, jira, google, outlook, weather, rss, onSyncJira, onDisconnectJira, onSyncGoogle, onDisconnectGoogle, onSyncOutlook, onDisconnectOutlook, onSyncWeather, onDisconnectWeather, onSyncRss, onDisconnectRss, onOpenSettings, onUpdateFocusText, onUpdateProjectItems, onUpdateNoteItems, onUpdateRoutines, onUpdateAffirmations, onUpdateQuickLaunch }: {
+export function Dashboard({ profile, jira, google, outlook, weather, rss, onSyncJira, onDisconnectJira, onSyncGoogle, onDisconnectGoogle, onSyncOutlook, onDisconnectOutlook, onSyncWeather, onDisconnectWeather, onSyncRss, onDisconnectRss, onOpenSettings, onUpdateDesign, onUpdateFocusText, onUpdateProjectItems, onUpdateNoteItems, onUpdateRoutines, onUpdateAffirmations, onUpdateQuickLaunch }: {
   profile: DeskProfile; jira: ConnectorState; google: GoogleState; outlook: OutlookState; weather: WeatherState; rss: RssState;
   onSyncJira: () => Promise<void>; onDisconnectJira: () => Promise<void>;
   onSyncGoogle: () => Promise<void>; onDisconnectGoogle: () => Promise<void>;
@@ -90,6 +92,7 @@ export function Dashboard({ profile, jira, google, outlook, weather, rss, onSync
   onSyncWeather: () => Promise<void>; onDisconnectWeather: () => Promise<void>;
   onSyncRss: () => Promise<void>; onDisconnectRss: () => Promise<void>;
   onOpenSettings: () => void;
+  onUpdateDesign: (patch: Partial<DeskDesign>) => Promise<void>;
   onUpdateFocusText: (focusText: string) => void;
   onUpdateProjectItems: (items: RoutineItem[]) => void;
   onUpdateNoteItems: (items: RoutineItem[]) => void;
@@ -97,6 +100,7 @@ export function Dashboard({ profile, jira, google, outlook, weather, rss, onSync
   onUpdateAffirmations: (affirmations: AffirmationItem[]) => void;
   onUpdateQuickLaunch: (links: QuickLaunchItem[]) => void;
 }) {
+  const [dragId, setDragId] = useState<string | null>(null);
   const cards = profile.design.cardOrder;
   const connectedCount = [jira.status, google.status, outlook.status, weather.status, rss.status].filter((s) => s === 'connected').length;
   const itemsAdded = profile.routines.length + profile.affirmations.length + profile.quickLaunch.length
@@ -125,11 +129,32 @@ export function Dashboard({ profile, jira, google, outlook, weather, rss, onSync
   const column1Cards = cards.filter((id) => !column2Ids.has(id));
   const column2Cards = cards.filter((id) => column2Ids.has(id));
 
+  function drop(targetId: string | null, toColumn2: boolean) {
+    if (dragId) void onUpdateDesign(reorderCards(profile.design, dragId, targetId, toColumn2));
+    setDragId(null);
+  }
+
+  /** Cards are directly draggable right on the dashboard — no trip to Settings needed to rearrange.
+   * Dragging one onto another reorders it there (and switches columns, if dropped in the other one);
+   * dragging into empty space at the bottom of a column moves it to the end of that column. */
+  function renderDraggable(id: string, toColumn2: boolean) {
+    const content = renderCard(id);
+    if (!content) return null;
+    return <div key={id} className={`draggable-card${dragId === id ? ' dragging' : ''}`} draggable
+      onDragStart={() => setDragId(id)}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => { e.stopPropagation(); drop(id, toColumn2); }}
+      onDragEnd={() => setDragId(null)}>{content}</div>;
+  }
+
   return <>
     <section className="metrics"><div><strong>{connectedCount}</strong><span>CONNECTED SERVICES</span></div><div><strong>{itemsAdded}</strong><span>ITEMS ADDED</span></div><div><strong>LOCAL</strong><span>DATA LOCATION</span></div></section>
     {profile.design.columns === 1
-      ? <section className="workspace workspace-single">{cards.map(renderCard)}</section>
-      : <section className="workspace workspace-split"><div className="workspace-col">{column1Cards.map(renderCard)}</div><div className="workspace-col">{column2Cards.map(renderCard)}</div></section>}
+      ? <section className="workspace workspace-single" onDragOver={(e) => e.preventDefault()} onDrop={() => drop(null, false)}>{cards.map((id) => renderDraggable(id, false))}</section>
+      : <section className="workspace workspace-split">
+          <div className="workspace-col" onDragOver={(e) => e.preventDefault()} onDrop={() => drop(null, false)}>{column1Cards.map((id) => renderDraggable(id, false))}</div>
+          <div className="workspace-col" onDragOver={(e) => e.preventDefault()} onDrop={() => drop(null, true)}>{column2Cards.map((id) => renderDraggable(id, true))}</div>
+        </section>}
     <div className="actions" style={{ maxWidth: 1450, margin: '14px auto 0' }}><button onClick={onOpenSettings}>Settings</button></div>
   </>;
 }

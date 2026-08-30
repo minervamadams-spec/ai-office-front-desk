@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { RoutineItem } from '../shared/contracts';
+import { AiNudge } from './AiNudge';
 
 function AddItemForm({ titlePlaceholder, detailPlaceholder, addButtonLabel, onAdd }: {
   titlePlaceholder: string; detailPlaceholder: string; addButtonLabel: string; onAdd: (title: string, detail: string) => void;
@@ -49,10 +50,10 @@ function ItemRow({ item, onSave, onDelete, onMove, isFirst, isLast, titlePlaceho
 
 /** Generic title+detail list card — add/edit/delete/reorder, with a per-card sample fallback shown
  * only until the installer adds a real item. Backs Routines, Projects & tasks, and Notes. */
-export function ListCard({ eyebrow, heading, items, useSampleData, sampleItems, onUpdate, titlePlaceholder, detailPlaceholder, addButtonLabel, emptyMessage }: {
+export function ListCard({ eyebrow, heading, items, useSampleData, sampleItems, onUpdate, titlePlaceholder, detailPlaceholder, addButtonLabel, emptyMessage, aiPrompt }: {
   eyebrow: string; heading: string; items: RoutineItem[]; useSampleData: boolean; sampleItems: RoutineItem[];
   onUpdate: (items: RoutineItem[]) => void;
-  titlePlaceholder: string; detailPlaceholder: string; addButtonLabel: string; emptyMessage: string;
+  titlePlaceholder: string; detailPlaceholder: string; addButtonLabel: string; emptyMessage: string; aiPrompt: string;
 }) {
   function addItem(title: string, detail: string) {
     onUpdate([...items, { id: crypto.randomUUID(), title, detail }]);
@@ -80,5 +81,6 @@ export function ListCard({ eyebrow, heading, items, useSampleData, sampleItems, 
     {items.length === 0 && !useSampleData && <p className="intro sample-note">{emptyMessage}</p>}
     {items.length > 0 && <ul className="routine-list">{items.map((item, index) => <ItemRow key={item.id} item={item} onSave={saveItem} onDelete={() => deleteItem(item.id)} onMove={(direction) => moveItem(index, direction)} isFirst={index === 0} isLast={index === items.length - 1} titlePlaceholder={titlePlaceholder} detailPlaceholder={detailPlaceholder}/>)}</ul>}
     <AddItemForm titlePlaceholder={titlePlaceholder} detailPlaceholder={detailPlaceholder} addButtonLabel={addButtonLabel} onAdd={addItem}/>
+    <AiNudge prompt={aiPrompt}/>
   </section>;
 }

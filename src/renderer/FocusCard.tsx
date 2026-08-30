@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { sampleFocusText } from '../shared/contracts';
+import { AiNudge } from './AiNudge';
 
 /** A single highlighted line for whatever the installer wants front and center today — not a list,
  * just one statement, editable in place. */
@@ -41,5 +42,6 @@ export function FocusCard({ focusText, useSampleData, onUpdate }: {
       <button onClick={startEditing}>{focusText ? 'Edit' : 'Set focus'}</button>
       {focusText && <button onClick={() => onUpdate('')}>Clear</button>}
     </div>
+    <AiNudge prompt="Help me pick one clear, specific focus for today — a single sentence naming the one thing that matters most."/>
   </section>;
 }

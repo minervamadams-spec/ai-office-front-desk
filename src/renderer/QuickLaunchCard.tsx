@@ -16,6 +16,19 @@ async function launchItem(item: QuickLaunchItem, onError: (message: string) => v
   }
 }
 
+/** A small colored glyph per item — generic shapes/symbols, never a real brand logo (trademark risk,
+ * and this app's strict CSP only allows same-origin/data: images anyway, not fetched icon assets).
+ * Keyword-matched for a few very common cases, falling back to the item's own initial. */
+function iconFor(item: QuickLaunchItem): { glyph: string; color: string } {
+  const label = item.label.toLowerCase();
+  if (/claude|chatgpt|\bgpt\b|gemini|copilot|perplexity/.test(label)) return { glyph: '✨', color: '#6751a5' };
+  if (/spotify|music|podcast/.test(label)) return { glyph: '♪', color: '#1db954' };
+  if (/roblox|steam|minecraft|\bgame\b/.test(label)) return { glyph: '▶', color: '#5865f2' };
+  if (item.kind === 'chrome-profile') return { glyph: '◐', color: '#4285f4' };
+  if (item.kind === 'app') return { glyph: '▢', color: '#79828d' };
+  return { glyph: item.label.trim().charAt(0).toUpperCase() || '#', color: '#1f5fa8' };
+}
+
 /** Fields for whichever kind is selected — shared by the add form and inline editing. */
 function KindFields({ kind, label, url, target, onChange, chromeProfiles }: {
   kind: QuickLaunchKind; label: string; url: string; target: string;
@@ -68,7 +81,7 @@ function AddLaunchForm({ chromeProfiles, onAdd }: { chromeProfiles: ChromeProfil
   </div>;
 }
 
-function LaunchRow({ item, chromeProfiles, onSave, onDelete }: {
+function LaunchChip({ item, chromeProfiles, onSave, onDelete }: {
   item: QuickLaunchItem; chromeProfiles: ChromeProfileInfo[]; onSave: (item: QuickLaunchItem) => void; onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -76,26 +89,27 @@ function LaunchRow({ item, chromeProfiles, onSave, onDelete }: {
   const [url, setUrl] = useState(item.url);
   const [target, setTarget] = useState(item.target);
   const [error, setError] = useState<string | null>(null);
+  const icon = iconFor(item);
 
   if (editing) {
     const valid = isValid(item.kind, label, url, target);
-    return <li className="routine-row editing">
+    return <div className="quick-launch-edit">
       <KindFields kind={item.kind} label={label} url={url} target={target} chromeProfiles={chromeProfiles}
         onChange={(patch) => { if (patch.label !== undefined) setLabel(patch.label); if (patch.url !== undefined) setUrl(patch.url); if (patch.target !== undefined) setTarget(patch.target); }}/>
-      <span>
+      <span className="actions" style={{ marginTop: 0 }}>
         <button className="primary" disabled={!valid} onClick={() => { onSave({ ...item, label: label.trim(), url: url.trim(), target: target.trim() }); setEditing(false); }}>Save</button>
         <button onClick={() => { setLabel(item.label); setUrl(item.url); setTarget(item.target); setEditing(false); }}>Cancel</button>
       </span>
-    </li>;
+    </div>;
   }
 
-  return <li className="routine-row">
-    <div>
-      <a className="quick-launch-link" onClick={() => void launchItem(item, setError)}>{item.label}</a>
-      {error && <span className="form-status">{error}</span>}
-    </div>
-    <span><button onClick={() => setEditing(true)}>Edit</button><button onClick={onDelete}>Delete</button></span>
-  </li>;
+  return <div className="quick-launch-chip">
+    <span className="chip-actions"><button onClick={() => setEditing(true)} aria-label={`Edit ${item.label}`}>✎</button><button onClick={onDelete} aria-label={`Delete ${item.label}`}>×</button></span>
+    <a className="quick-launch-link" onClick={() => void launchItem(item, setError)} title={error ?? undefined}>
+      <span className="quick-launch-icon" style={{ background: icon.color }}>{icon.glyph}</span>
+      {item.label}
+    </a>
+  </div>;
 }
 
 export function QuickLaunchCard({ links, useSampleData, onUpdateLinks }: {
@@ -119,10 +133,18 @@ export function QuickLaunchCard({ links, useSampleData, onUpdateLinks }: {
     <div className="panel-heading"><div><p className="eyebrow">QUICK LAUNCH</p><h2>Quick launch</h2></div></div>
     {links.length === 0 && useSampleData && <>
       <p className="intro sample-note">Suggestions — add your own below and these disappear.</p>
-      <ul className="sample-list">{sampleQuickLaunch.map((item) => <li key={item.id}><a className="quick-launch-link" onClick={() => void window.frontDesk.openContentLink(item.url)}>{item.label}</a></li>)}</ul>
+      <div className="quick-launch-list">{sampleQuickLaunch.map((item) => {
+        const icon = iconFor(item);
+        return <div className="quick-launch-chip" key={item.id}>
+          <a className="quick-launch-link" onClick={() => void window.frontDesk.openContentLink(item.url)}>
+            <span className="quick-launch-icon" style={{ background: icon.color }}>{icon.glyph}</span>
+            {item.label}
+          </a>
+        </div>;
+      })}</div>
     </>}
     {links.length === 0 && !useSampleData && <p className="intro sample-note">No links yet.</p>}
-    {links.length > 0 && <ul className="routine-list">{links.map((item) => <LaunchRow key={item.id} item={item} chromeProfiles={chromeProfiles} onSave={saveLink} onDelete={() => deleteLink(item.id)}/>)}</ul>}
+    {links.length > 0 && <div className="quick-launch-list">{links.map((item) => <LaunchChip key={item.id} item={item} chromeProfiles={chromeProfiles} onSave={saveLink} onDelete={() => deleteLink(item.id)}/>)}</div>}
     <AddLaunchForm chromeProfiles={chromeProfiles} onAdd={addLink}/>
   </section>;
 }

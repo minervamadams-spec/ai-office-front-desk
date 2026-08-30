@@ -91,7 +91,7 @@ export function App() {
       onSyncOutlook={syncOutlook} onDisconnectOutlook={disconnectOutlook}
       onSyncWeather={syncWeather} onDisconnectWeather={disconnectWeather}
       onSyncRss={syncRss} onDisconnectRss={disconnectRss}
-      onOpenSettings={() => setShowSettings(true)}
+      onOpenSettings={() => setShowSettings(true)} onUpdateDesign={updateDesign}
       onUpdateFocusText={updateFocusText} onUpdateProjectItems={updateProjectItems} onUpdateNoteItems={updateNoteItems}
       onUpdateRoutines={updateRoutines} onUpdateAffirmations={updateAffirmations} onUpdateQuickLaunch={updateQuickLaunch}/>
     {showSettings && <Settings profile={profile} catalog={catalog} jira={jira} google={google} outlook={outlook} weather={weather} rss={rss} onUpdateDesign={updateDesign}

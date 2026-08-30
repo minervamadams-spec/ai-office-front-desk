@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { DeskDesign } from '../shared/contracts';
 import { defaultDesign } from '../shared/contracts';
+import { reorderCards } from './cardOrdering';
 
 export const ALL_CARDS = [
   { id: 'focus', label: 'Focus', description: 'A single highlighted line for whatever you want front and center today.' },
@@ -43,15 +44,7 @@ export function LayoutEditor({ design, onUpdateDesign }: { design: DeskDesign; o
   /** Drag-and-drop move: repositions `draggedId` next to `targetId` (or at the end, if targetId is null —
    * an empty-column drop) and assigns it to whichever column it was dropped into. */
   function moveToColumn(draggedId: string, targetId: string | null, toColumn2: boolean) {
-    const order = [...design.cardOrder];
-    const from = order.indexOf(draggedId);
-    if (from < 0) return;
-    order.splice(from, 1);
-    const to = targetId ? order.indexOf(targetId) : order.length;
-    order.splice(to < 0 ? order.length : to, 0, draggedId);
-    const nextColumn2 = new Set(column2Set);
-    if (toColumn2) nextColumn2.add(draggedId); else nextColumn2.delete(draggedId);
-    void onUpdateDesign({ cardOrder: order, column2: [...nextColumn2] });
+    void onUpdateDesign(reorderCards(design, draggedId, targetId, toColumn2));
   }
 
   function resetLayout() {
