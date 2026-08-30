@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, WeatherState, RssState } from '../shared/contracts';
+import { useEffect, useState } from 'react';
+import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, WeatherState, RssState, QuickLaunchItem } from '../shared/contracts';
 import { LayoutEditor } from './LayoutEditor';
 import { ServiceCatalogGrid } from './ServiceCatalogGrid';
+import { QuickLaunchManager } from './QuickLaunchCard';
 
-export function Settings({ profile, catalog, jira, google, outlook, weather, rss, onUpdateDesign, onReopenWizard, onDisconnectJira, onDisconnectGoogle, onDisconnectOutlook, onDisconnectWeather, onDisconnectRss, onImportLayout, onDismissNotice, onSyncAll, onDeleteAll, onClose }: {
+export function Settings({ profile, catalog, jira, google, outlook, weather, rss, onUpdateDesign, onUpdateQuickLaunch, onReopenWizard, onDisconnectJira, onDisconnectGoogle, onDisconnectOutlook, onDisconnectWeather, onDisconnectRss, onImportLayout, onDismissNotice, onSyncAll, onDeleteAll, onClose }: {
   profile: DeskProfile; catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; weather: WeatherState; rss: RssState;
   onUpdateDesign: (patch: Partial<DeskProfile['design']>) => Promise<void>;
+  onUpdateQuickLaunch: (links: QuickLaunchItem[]) => void;
   onReopenWizard: () => Promise<void>;
   onDisconnectJira: () => Promise<void>;
   onDisconnectGoogle: () => Promise<void>;
@@ -23,6 +25,13 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
   const [layoutStatus, setLayoutStatus] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const [launchAtLogin, setLaunchAtLogin] = useState<boolean | null>(null);
+
+  useEffect(() => { void window.frontDesk.getLaunchAtLogin().then(setLaunchAtLogin); }, []);
+
+  async function toggleLaunchAtLogin() {
+    setLaunchAtLogin(await window.frontDesk.setLaunchAtLogin(!launchAtLogin));
+  }
 
   const connectedCount = [jira.status, google.status, outlook.status, weather.status, rss.status].filter((s) => s === 'connected').length;
 
@@ -50,6 +59,10 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
 
   return <div className="settings-overlay"><div className="settings-panel">
     <div className="panel-heading"><div><p className="eyebrow">SETTINGS</p><h2>Desk & connections</h2></div><button onClick={onClose}>Close</button></div>
+
+    <section><h3>Startup</h3><label className="switch"><input type="checkbox" checked={launchAtLogin ?? false} disabled={launchAtLogin === null} onChange={() => void toggleLaunchAtLogin()}/><span>Start automatically when you log in</span></label></section>
+
+    <section><h3>Quick Launch links</h3><p className="intro">Edit or remove entries here — the dashboard card stays a clean, one-click list.</p><QuickLaunchManager links={profile.quickLaunch} onUpdateLinks={onUpdateQuickLaunch}/></section>
 
     <section><h3>Sync all connections</h3><p className="intro">Refreshes every connected service ({connectedCount} connected) in one click.</p>
       <div className="actions"><button className="primary" disabled={connectedCount === 0 || syncingAll} onClick={() => void syncAll()}>{syncingAll ? 'Syncing…' : 'Sync all now'}</button></div>

@@ -198,6 +198,11 @@ app.whenReady().then(() => {
   ipcMain.handle('profile:update-design', (_event, patch) => profiles.updateDesign(patch));
   ipcMain.handle('catalog:list', () => connectorCatalog);
   ipcMain.handle('security:available', () => safeStorage.isEncryptionAvailable());
+  ipcMain.handle('settings:get-launch-at-login', () => app.getLoginItemSettings().openAtLogin);
+  ipcMain.handle('settings:set-launch-at-login', (_event, enabled: boolean) => {
+    app.setLoginItemSettings({ openAtLogin: enabled });
+    return app.getLoginItemSettings().openAtLogin;
+  });
   // Strict: only the fixed, curated setup/official-guide links baked into the catalog.
   ipcMain.handle('external:open', (_event, rawUrl: string) => {
     const url = new URL(rawUrl);

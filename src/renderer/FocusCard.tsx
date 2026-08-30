@@ -4,8 +4,8 @@ import { AiNudge } from './AiNudge';
 
 /** A single highlighted line for whatever the installer wants front and center today — not a list,
  * just one statement, editable in place. */
-export function FocusCard({ focusText, useSampleData, onUpdate }: {
-  focusText: string; useSampleData: boolean; onUpdate: (focusText: string) => void;
+export function FocusCard({ focusText, useSampleData, onUpdate, collapsed, onToggleCollapse }: {
+  focusText: string; useSampleData: boolean; onUpdate: (focusText: string) => void; collapsed?: boolean; onToggleCollapse?: () => void;
 }) {
   const showingExample = focusText === '' && useSampleData;
   const [editing, setEditing] = useState(false);
@@ -20,9 +20,9 @@ export function FocusCard({ focusText, useSampleData, onUpdate }: {
     setEditing(false);
   }
 
-  if (editing) {
+  if (editing && !collapsed) {
     return <section className="panel">
-      <div className="panel-heading"><div><p className="eyebrow">FOCUS</p><h2>Today</h2></div></div>
+      <div className="panel-heading collapsible" onClick={onToggleCollapse}><div><p className="eyebrow">FOCUS</p><h2>Today</h2></div><span className={`chevron${collapsed ? ' collapsed' : ''}`}>⌄</span></div>
       <div className="routine-add">
         <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="What's front and center today?" aria-label="Focus" autoFocus onKeyDown={(e) => e.key === 'Enter' && save()}/>
         <button className="primary" onClick={save}>Save</button>
@@ -32,16 +32,15 @@ export function FocusCard({ focusText, useSampleData, onUpdate }: {
   }
 
   return <section className="panel">
-    <div className="panel-heading"><div><p className="eyebrow">FOCUS</p><h2>Today</h2></div></div>
-    {showingExample
-      ? <p className="intro sample-note">Example — <a className="quick-launch-link" onClick={startEditing}>click to set your own</a>: “{sampleFocusText}”.</p>
-      : focusText
-        ? <p className="intro" style={{ padding: '0 16px 14px' }}>{focusText}</p>
-        : <p className="intro sample-note">No focus set yet.</p>}
-    <div className="actions" style={{ padding: '0 16px 14px' }}>
-      <button onClick={startEditing}>{focusText ? 'Edit' : 'Set focus'}</button>
-      {focusText && <button onClick={() => onUpdate('')}>Clear</button>}
-    </div>
-    <AiNudge prompt="Help me pick one clear, specific focus for today — a single sentence naming the one thing that matters most."/>
+    <div className="panel-heading collapsible" onClick={onToggleCollapse}><div><p className="eyebrow">FOCUS</p><h2>Today</h2></div><span className={`chevron${collapsed ? ' collapsed' : ''}`}>⌄</span></div>
+    {!collapsed && <>
+      {showingExample
+        ? <p className="intro sample-note">Example — <a className="quick-launch-link" onClick={startEditing}>click to set your own</a>: “{sampleFocusText}”.</p>
+        : focusText
+          ? <p className="intro clickable" style={{ padding: '0 16px 14px' }} onClick={startEditing}>{focusText}</p>
+          : <button className="add-link" onClick={startEditing}>+ Set focus</button>}
+      {focusText && !showingExample && <div className="actions" style={{ padding: '0 16px 14px' }}><button onClick={() => onUpdate('')}>Clear</button></div>}
+      <AiNudge prompt="Help me pick one clear, specific focus for today — a single sentence naming the one thing that matters most."/>
+    </>}
   </section>;
 }

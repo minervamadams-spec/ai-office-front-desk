@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.4.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **Collapsible cards** — click any card's header to collapse it to just the title, click again to
+  expand. Collapsed state is saved with your layout.
+- **Start automatically at login** — a toggle in Settings → Startup, backed by the OS's own login-item
+  mechanism (nothing custom to go stale).
+- **"Ask AI for ideas" now copies the prompt and opens the tool in one click** — "Open in Claude" /
+  "Open in ChatGPT" / "Open in Gemini" replaces the old separate copy-then-you-open-it-yourself flow.
+  It still can't paste into the page itself (this app has no AI API and no browser-automation access
+  into whatever opens), so there's one paste (⌘V) left once the page loads — but it's one click
+  instead of a five-step round trip.
+- Add-item forms (Notes, Projects & tasks, Routines, Affirmations, Quick Launch) now sit behind a
+  small "+ Add …" link instead of always-visible input fields, matching the request for a more
+  compact resting state.
+
+### Changed
+
+- **Two independently-scrolling columns**, each sized to the window instead of the whole page
+  scrolling as one — matches feedback that reaching a card shouldn't require scrolling past the
+  other column first. This also fixes a real drag-and-drop bug: dragging a card from the right
+  column to the left column could fail if the target had scrolled out of view during a single
+  shared page scroll; with both columns independently visible in the same viewport, that failure
+  mode goes away.
+- **Background is now a warm sandalwood-gray** instead of a near-white blue-gray, so the white
+  cards stand out against it rather than blending in.
+- Quick Launch's dashboard card is now clean icon chips only — the pencil/× edit controls on every
+  chip moved to a new "Quick Launch links" section in Settings, since that's the surface for upkeep,
+  not the one you glance at daily.
+- List rows (Routines, Projects & tasks, Notes, Affirmations) dropped their standalone Edit/Delete/
+  reorder-arrow buttons — click a row to edit it in place; Delete now lives inside that edit view,
+  next to Save/Cancel. Note: per-item up/down reordering is gone with those arrows — item-level drag
+  reordering wasn't in scope for this round; delete-and-re-add is the workaround if you need a
+  specific order today.
+- General tightened spacing and copy across every card (shorter sample-data labels, smaller row
+  padding, smaller card-header padding) per feedback that the layout felt padded and wordy compared
+  to the reference dashboard.
+
 ## 0.3.0 — 2026-08-30 (unsigned)
 
 ### Added

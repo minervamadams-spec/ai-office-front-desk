@@ -8,8 +8,8 @@ function tempPath() { return path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'fr
 
 describe('sanitizeDesign (used to validate untrusted layout-import files)', () => {
   it('accepts a well-formed design unchanged', () => {
-    const design = sanitizeDesign({ accent: 'teal', density: 'compact', columns: 1, showDescriptions: false, cardOrder: ['notes', 'weather'], column2: [] });
-    expect(design).toEqual({ accent: 'teal', density: 'compact', columns: 1, showDescriptions: false, cardOrder: ['notes', 'weather'], column2: [] });
+    const design = sanitizeDesign({ accent: 'teal', density: 'compact', columns: 1, showDescriptions: false, cardOrder: ['notes', 'weather'], column2: [], collapsedCards: [] });
+    expect(design).toEqual({ accent: 'teal', density: 'compact', columns: 1, showDescriptions: false, cardOrder: ['notes', 'weather'], column2: [], collapsedCards: [] });
   });
 
   it('falls back to safe defaults for a completely malformed input, without throwing', () => {

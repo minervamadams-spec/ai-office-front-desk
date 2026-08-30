@@ -11,6 +11,7 @@ test('a Quick Launch "local app" entry persists across a relaunch', async () => 
   await window.getByRole('checkbox', { name: /Quick launch/ }).click();
   await window.getByRole('button', { name: 'Close', exact: true }).click();
 
+  await window.getByRole('button', { name: '+ Add quick launch' }).click();
   const addForm = window.locator('.routine-add', { has: window.getByRole('combobox', { name: 'Quick launch type' }) });
   await addForm.getByRole('combobox', { name: 'Quick launch type' }).selectOption('app');
   await addForm.getByLabel('Link name').fill('Roblox');

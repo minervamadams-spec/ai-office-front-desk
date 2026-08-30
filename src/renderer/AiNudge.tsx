@@ -1,22 +1,24 @@
 import { useState } from 'react';
 
-/** A small, honest nudge toward using AI for this card's content — reveals a copyable suggested
- * prompt rather than pretending to call out to an AI tool directly with it pre-filled. This app has
- * no AI API of its own (no keys, no network calls to a model) and doesn't reach into whichever tool
- * the installer prefers, so "copy a prompt, paste it into Claude/ChatGPT/Gemini yourself" is the one
- * version of this that's actually true rather than a broken deep-link. */
+const AI_TOOLS = [
+  { label: 'Claude', url: 'https://claude.ai/new' },
+  { label: 'ChatGPT', url: 'https://chatgpt.com' },
+  { label: 'Gemini', url: 'https://gemini.google.com' }
+];
+
+/** A small, honest nudge toward using AI for this card's content. This app has no AI API of its own
+ * (no keys, no network calls to a model), so it can't submit the prompt for you — but it can copy
+ * the prompt to the clipboard and open the tool in one click, leaving just a single paste (Cmd+V)
+ * once the page loads, instead of a manual copy-then-find-then-open-then-paste round trip. */
 export function AiNudge({ prompt }: { prompt: string }) {
   const [expanded, setExpanded] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [openedLabel, setOpenedLabel] = useState<string | null>(null);
 
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(prompt);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard access can fail in some contexts — the prompt is still right there to copy by hand.
-    }
+  async function copyAndOpen(tool: { label: string; url: string }) {
+    try { await navigator.clipboard.writeText(prompt); } catch { /* clipboard can fail in some contexts; still open the tool */ }
+    await window.frontDesk.openContentLink(tool.url);
+    setOpenedLabel(tool.label);
+    setTimeout(() => setOpenedLabel(null), 3000);
   }
 
   return <>
@@ -24,9 +26,10 @@ export function AiNudge({ prompt }: { prompt: string }) {
     {expanded && <div className="ai-nudge-prompt">
       <p style={{ margin: 0 }}>{prompt}</p>
       <div className="actions" style={{ marginTop: 6 }}>
-        <button onClick={() => void copy()}>{copied ? 'Copied!' : 'Copy prompt'}</button>
+        {AI_TOOLS.map((tool) => <button key={tool.label} onClick={() => void copyAndOpen(tool)}>Open in {tool.label}</button>)}
         <button onClick={() => setExpanded(false)}>Close</button>
       </div>
+      {openedLabel && <p className="form-status" style={{ margin: '6px 0 0' }}>Copied — paste (⌘V) into {openedLabel}.</p>}
     </div>}
   </>;
 }

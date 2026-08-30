@@ -8,6 +8,8 @@ export interface DeskDesign {
   cardOrder: string[];
   /** Subset of cardOrder assigned to the second column when columns === 2; the rest render in the first. */
   column2: string[];
+  /** Cards currently collapsed to just their header — click the header again to expand. */
+  collapsedCards: string[];
 }
 
 export interface RoutineItem {
@@ -242,7 +244,8 @@ export const knownCardIds = ['focus', 'projects', 'connections', 'routines', 'no
 export const defaultDesign: DeskDesign = {
   accent: 'blue', density: 'comfortable', columns: 2, showDescriptions: true,
   cardOrder: ['focus', 'projects', 'connections', 'routines', 'notes'],
-  column2: ['connections', 'notes']
+  column2: ['connections', 'notes'],
+  collapsedCards: []
 };
 
 export const defaultProfile: DeskProfile = {

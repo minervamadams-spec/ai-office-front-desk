@@ -77,6 +77,9 @@ export function sanitizeDesign(candidate: unknown): DeskDesign {
     cardOrder,
     column2: Array.isArray(design.column2)
       ? [...new Set(design.column2.filter((card): card is string => typeof card === 'string' && cardOrderSet.has(card)))]
+      : [],
+    collapsedCards: Array.isArray(design.collapsedCards)
+      ? [...new Set(design.collapsedCards.filter((card): card is string => typeof card === 'string' && cardOrderSet.has(card)))]
       : []
   };
 }
