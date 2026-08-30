@@ -5,8 +5,8 @@ import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { updateElectronApp } from 'update-electron-app';
 import {
-  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput, TeamsConnectInput, NotionConnectInput, LinearConnectInput, AsanaConnectInput,
-  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState, defaultNotionState, defaultLinearState, defaultAsanaState, ChromeProfileInfo
+  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput, TeamsConnectInput, NotionConnectInput, LinearConnectInput, AsanaConnectInput, TrelloConnectInput,
+  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState, defaultNotionState, defaultLinearState, defaultAsanaState, defaultTrelloState, ChromeProfileInfo
 } from '../shared/contracts';
 import { ProfileRepository, sanitizeDesign } from './profile-repository';
 import { ConnectorStateRepository } from './connector-state-repository';
@@ -22,6 +22,7 @@ import { connectTeams, syncTeams } from './adapters/teams-adapter';
 import { testNotionConnection, syncNotionItems } from './adapters/notion-adapter';
 import { testLinearConnection, syncLinearItems } from './adapters/linear-adapter';
 import { testAsanaConnection, syncAsanaItems } from './adapters/asana-adapter';
+import { testTrelloConnection, syncTrelloItems } from './adapters/trello-adapter';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -463,6 +464,34 @@ app.whenReady().then(() => {
     return connectorStates.read('asana', defaultAsanaState);
   });
 
+  ipcMain.handle('connector:trello:state', () => connectorStates.read('trello', defaultTrelloState));
+  ipcMain.handle('connector:trello:test', async (_event, input: TrelloConnectInput) => testTrelloConnection(input.key, input.token));
+  ipcMain.handle('connector:trello:connect', async (_event, input: TrelloConnectInput) => {
+    const result = await testTrelloConnection(input.key, input.token);
+    if (!result.ok || !result.value) {
+      connectorStates.write('trello', { status: 'error', config: null, lastSyncedAt: null, lastError: result.error ?? 'Connection failed.', items: [] }, null);
+      return connectorStates.read('trello', defaultTrelloState);
+    }
+    const secretRef = secrets.store(JSON.stringify({ key: input.key, token: input.token }));
+    connectorStates.write('trello', { status: 'connected', config: { username: result.value.username }, lastSyncedAt: null, lastError: null, items: [] }, secretRef);
+    return syncTrelloNow(result.value.username, input.key, input.token);
+  });
+  ipcMain.handle('connector:trello:sync', async () => {
+    const state = connectorStates.read('trello', defaultTrelloState);
+    const secretRef = connectorStates.readSecretRef('trello');
+    if (state.status !== 'connected' || !state.config || !secretRef) return state;
+    const stored = secrets.read(secretRef);
+    if (!stored) return state;
+    const { key, token } = JSON.parse(stored) as { key: string; token: string };
+    return syncTrelloNow(state.config.username, key, token);
+  });
+  ipcMain.handle('connector:trello:disconnect', () => {
+    const secretRef = connectorStates.readSecretRef('trello');
+    if (secretRef) secrets.delete(secretRef);
+    connectorStates.clear('trello');
+    return connectorStates.read('trello', defaultTrelloState);
+  });
+
   ipcMain.handle('connector:google:state', () => connectorStates.read('google', defaultGoogleState));
   ipcMain.handle('connector:google:connect', async (_event, input: GoogleConnectInput) => {
     const result = await connectGoogle(input);
@@ -596,6 +625,7 @@ app.whenReady().then(() => {
     const notion = connectorStates.read('notion', defaultNotionState);
     const linear = connectorStates.read('linear', defaultLinearState);
     const asana = connectorStates.read('asana', defaultAsanaState);
+    const trello = connectorStates.read('trello', defaultTrelloState);
     const redacted = {
       exportedAt: new Date().toISOString(),
       connectors: [
@@ -609,7 +639,8 @@ app.whenReady().then(() => {
         { id: 'teams', status: teams.status, lastSyncedAt: teams.lastSyncedAt, lastError: teams.lastError, itemCount: teams.items.length },
         { id: 'notion', status: notion.status, lastSyncedAt: notion.lastSyncedAt, lastError: notion.lastError, itemCount: notion.items.length },
         { id: 'linear', status: linear.status, lastSyncedAt: linear.lastSyncedAt, lastError: linear.lastError, itemCount: linear.items.length },
-        { id: 'asana', status: asana.status, lastSyncedAt: asana.lastSyncedAt, lastError: asana.lastError, itemCount: asana.items.length }
+        { id: 'asana', status: asana.status, lastSyncedAt: asana.lastSyncedAt, lastError: asana.lastError, itemCount: asana.items.length },
+        { id: 'trello', status: trello.status, lastSyncedAt: trello.lastSyncedAt, lastError: trello.lastError, itemCount: trello.items.length }
       ]
     };
     const target = await dialog.showSaveDialog({ defaultPath: 'front-desk-diagnostics.json' });
@@ -720,6 +751,17 @@ async function syncAsanaNow(name: string, token: string) {
     connectorStates.write('asana', { status: 'connected', config: { name }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
   }
   return connectorStates.read('asana', defaultAsanaState);
+}
+
+async function syncTrelloNow(username: string, key: string, token: string) {
+  const result = await syncTrelloItems(key, token);
+  const secretRef = connectorStates.readSecretRef('trello');
+  if (!result.ok) {
+    connectorStates.write('trello', { status: 'error', config: { username }, lastSyncedAt: null, lastError: result.error ?? 'Sync failed.', items: [] }, secretRef);
+  } else {
+    connectorStates.write('trello', { status: 'connected', config: { username }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
+  }
+  return connectorStates.read('trello', defaultTrelloState);
 }
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

@@ -4,13 +4,15 @@ import type {
   GoogleState, GoogleConnectInput, OutlookState, OutlookConnectInput,
   WeatherState, WeatherConnectInput, RssState, RssConnectInput, ChromeProfileInfo,
   GitHubState, GitHubConnectInput, SlackState, SlackConnectInput, TeamsState, TeamsConnectInput,
-  NotionState, NotionConnectInput, LinearState, LinearConnectInput, AsanaState, AsanaConnectInput
+  NotionState, NotionConnectInput, LinearState, LinearConnectInput, AsanaState, AsanaConnectInput,
+  TrelloState, TrelloConnectInput
 } from '../shared/contracts';
 import type { AdapterResult as GitHubAdapterResult } from '../main/adapters/github-adapter';
 import type { AdapterResult as SlackAdapterResult } from '../main/adapters/slack-adapter';
 import type { AdapterResult as NotionAdapterResult } from '../main/adapters/notion-adapter';
 import type { AdapterResult as LinearAdapterResult } from '../main/adapters/linear-adapter';
 import type { AdapterResult as AsanaAdapterResult } from '../main/adapters/asana-adapter';
+import type { AdapterResult as TrelloAdapterResult } from '../main/adapters/trello-adapter';
 import type { AdapterResult } from '../main/adapters/jira-adapter';
 
 const api = {
@@ -77,6 +79,13 @@ const api = {
     connect: (input: AsanaConnectInput): Promise<AsanaState> => ipcRenderer.invoke('connector:asana:connect', input),
     sync: (): Promise<AsanaState> => ipcRenderer.invoke('connector:asana:sync'),
     disconnect: (): Promise<AsanaState> => ipcRenderer.invoke('connector:asana:disconnect')
+  },
+  trello: {
+    state: (): Promise<TrelloState> => ipcRenderer.invoke('connector:trello:state'),
+    test: (input: TrelloConnectInput): Promise<TrelloAdapterResult<{ username: string }>> => ipcRenderer.invoke('connector:trello:test', input),
+    connect: (input: TrelloConnectInput): Promise<TrelloState> => ipcRenderer.invoke('connector:trello:connect', input),
+    sync: (): Promise<TrelloState> => ipcRenderer.invoke('connector:trello:sync'),
+    disconnect: (): Promise<TrelloState> => ipcRenderer.invoke('connector:trello:disconnect')
   },
   google: {
     state: (): Promise<GoogleState> => ipcRenderer.invoke('connector:google:state'),

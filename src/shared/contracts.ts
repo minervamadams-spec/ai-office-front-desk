@@ -236,6 +236,31 @@ export const defaultAsanaState: AsanaState = {
   id: 'asana', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
 };
 
+export interface TrelloItem {
+  id: string;
+  title: string;
+  due: string | null;
+  url: string;
+}
+
+export interface TrelloConnectInput {
+  key: string;
+  token: string;
+}
+
+export interface TrelloState {
+  id: 'trello';
+  status: ConnectionStatus;
+  config: { username: string } | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  items: TrelloItem[];
+}
+
+export const defaultTrelloState: TrelloState = {
+  id: 'trello', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
+};
+
 export const defaultJiraState: ConnectorState = {
   id: 'jira', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, tickets: []
 };
@@ -408,7 +433,6 @@ export const defaultProfile: DeskProfile = {
 };
 
 const secretBrokerReason = "This provider's desktop OAuth needs a client secret, which can't be embedded safely in a distributed app. It stays unavailable until a secure token-broker design is built and reviewed.";
-const noAdapterReason = 'No read-only adapter has been built or security-reviewed for this service yet — that work has to happen before any data can be requested.';
 
 export const connectorCatalog: ConnectorManifest[] = [
   { id: 'google', name: 'Google', status: 'available', summary: 'Inbox counts, message metadata, and recent Drive files.', auth: 'Installer-owned desktop OAuth with PKCE', reads: 'Gmail metadata and Drive file metadata', permissions: ['gmail.metadata', 'drive.metadata.readonly'], adminApproval: false, apiToken: false, setupTime: '10–20 minutes', officialSetupUrl: 'https://developers.google.com/identity/protocols/oauth2/native-app', retention: 'Only selected card fields; disconnect clears the cache.' },
@@ -421,9 +445,7 @@ export const connectorCatalog: ConnectorManifest[] = [
   { id: 'notion', name: 'Notion', status: 'available', summary: 'Recently edited pages you\'ve shared with your own Notion integration.', auth: 'Installer-supplied internal integration secret from your own Notion workspace — no OAuth handshake needed', reads: 'Page title, last-edited time, and URL — only for pages you share with the integration', permissions: ['Read content'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://developers.notion.com/docs/authorization', retention: 'Only selected fields; disconnect clears the cache.' },
   { id: 'linear', name: 'Linear', status: 'available', summary: 'Issues currently assigned to you.', auth: 'Installer-supplied Linear personal API key', reads: 'Issue identifier, title, state, and URL', permissions: ['Read-only adapter'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://linear.app/developers/api#personal-api-keys', retention: 'Only selected fields; disconnect clears the cache.' },
   { id: 'asana', name: 'Asana', status: 'available', summary: 'Incomplete tasks assigned to you, across every workspace you belong to.', auth: 'Installer-supplied Asana personal access token', reads: 'Task title, due date, and URL', permissions: ['Read-only adapter'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://developers.asana.com/docs/personal-access-token', retention: 'Only selected fields; disconnect clears the cache.' },
-  ...([
-    ['Trello', 'board activity']
-  ] as const).map(([name, what]) => ({ id: name.toLowerCase(), name, status: 'planned' as const, summary: `Potential ${name} ${what} card.`, auth: 'To be determined', reads: 'No data is read', permissions: [], adminApproval: false, apiToken: false, setupTime: 'Not available yet', retention: 'No data is collected until an adapter is approved.', notReadyReason: noAdapterReason }))
+  { id: 'trello', name: 'Trello', status: 'available', summary: 'Open cards assigned to you across your Trello boards.', auth: 'Installer-supplied Trello API key and token from their own account', reads: 'Card title, due date, and URL', permissions: ['Read-only adapter'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://trello.com/power-ups/admin', retention: 'Only selected fields; disconnect clears the cache.' }
 ];
 
 export const catalogStatusLabel: Record<ConnectorStatus, string> = {

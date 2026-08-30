@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **Trello is now a real, working connector** — the seventh. An API key and token generated from
+  your own Trello account, no OAuth needed. Shows your open cards across every board — title, due
+  date, and a link.
+
 ## 0.10.0 — 2026-08-30 (unsigned)
 
 ### Added
