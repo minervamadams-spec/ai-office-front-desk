@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **Microsoft Teams is now a real, working connector** — the third one, after GitHub and Slack. Reuses
+  the exact same public-client OAuth-with-PKCE mechanism already proven for Outlook (no client secret,
+  no new broker infrastructure) — just a Chat.Read scope on the same kind of Azure app registration,
+  which can be the same one already used for Outlook. Shows recent chat message previews (HTML
+  stripped, truncated, never the full message) from your Microsoft Teams chats.
+
 ## 0.6.0 — 2026-08-30 (unsigned)
 
 ### Added

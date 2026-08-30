@@ -5,8 +5,8 @@ import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { updateElectronApp } from 'update-electron-app';
 import {
-  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput,
-  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, ChromeProfileInfo
+  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput, TeamsConnectInput,
+  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState, ChromeProfileInfo
 } from '../shared/contracts';
 import { ProfileRepository, sanitizeDesign } from './profile-repository';
 import { ConnectorStateRepository } from './connector-state-repository';
@@ -18,6 +18,7 @@ import { connectWeather, syncWeather } from './adapters/weather-adapter';
 import { connectRss, syncRss } from './adapters/rss-adapter';
 import { testGitHubConnection, syncGitHubItems, parseRepoList } from './adapters/github-adapter';
 import { testSlackConnection, syncSlackItems, parseChannelList } from './adapters/slack-adapter';
+import { connectTeams, syncTeams } from './adapters/teams-adapter';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -346,6 +347,38 @@ app.whenReady().then(() => {
     return connectorStates.read('slack', defaultSlackState);
   });
 
+  ipcMain.handle('connector:teams:state', () => connectorStates.read('teams', defaultTeamsState));
+  ipcMain.handle('connector:teams:connect', async (_event, input: TeamsConnectInput) => {
+    const result = await connectTeams(input);
+    if (!result.ok || !result.value) {
+      connectorStates.write('teams', { status: 'error', config: null, lastSyncedAt: null, lastError: result.error ?? 'Connection failed.', items: [] }, null);
+      return connectorStates.read('teams', defaultTeamsState);
+    }
+    const secretRef = secrets.store(result.value.refreshToken);
+    connectorStates.write('teams', { status: 'connected', config: { clientId: input.clientId, tenant: input.tenant }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value.items }, secretRef);
+    return connectorStates.read('teams', defaultTeamsState);
+  });
+  ipcMain.handle('connector:teams:sync', async () => {
+    const state = connectorStates.read('teams', defaultTeamsState);
+    const secretRef = connectorStates.readSecretRef('teams');
+    if (state.status !== 'connected' || !state.config || !secretRef) return state;
+    const refreshToken = secrets.read(secretRef);
+    if (!refreshToken) return state;
+    const result = await syncTeams({ clientId: state.config.clientId, tenant: state.config.tenant }, refreshToken);
+    if (!result.ok || !result.value) {
+      connectorStates.write('teams', { ...state, status: 'error', lastError: result.error ?? 'Sync failed.' }, secretRef);
+    } else {
+      connectorStates.write('teams', { ...state, status: 'connected', lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value }, secretRef);
+    }
+    return connectorStates.read('teams', defaultTeamsState);
+  });
+  ipcMain.handle('connector:teams:disconnect', () => {
+    const secretRef = connectorStates.readSecretRef('teams');
+    if (secretRef) secrets.delete(secretRef);
+    connectorStates.clear('teams');
+    return connectorStates.read('teams', defaultTeamsState);
+  });
+
   ipcMain.handle('connector:google:state', () => connectorStates.read('google', defaultGoogleState));
   ipcMain.handle('connector:google:connect', async (_event, input: GoogleConnectInput) => {
     const result = await connectGoogle(input);
@@ -475,6 +508,7 @@ app.whenReady().then(() => {
     const rss = connectorStates.read('rss', defaultRssState);
     const github = connectorStates.read('github', defaultGitHubState);
     const slack = connectorStates.read('slack', defaultSlackState);
+    const teams = connectorStates.read('teams', defaultTeamsState);
     const redacted = {
       exportedAt: new Date().toISOString(),
       connectors: [
@@ -484,7 +518,8 @@ app.whenReady().then(() => {
         { id: 'weather', status: weather.status, lastSyncedAt: weather.lastSyncedAt, lastError: weather.lastError },
         { id: 'rss', status: rss.status, lastSyncedAt: rss.lastSyncedAt, lastError: rss.lastError, itemCount: rss.items.length },
         { id: 'github', status: github.status, lastSyncedAt: github.lastSyncedAt, lastError: github.lastError, itemCount: github.items.length },
-        { id: 'slack', status: slack.status, lastSyncedAt: slack.lastSyncedAt, lastError: slack.lastError, itemCount: slack.items.length }
+        { id: 'slack', status: slack.status, lastSyncedAt: slack.lastSyncedAt, lastError: slack.lastError, itemCount: slack.items.length },
+        { id: 'teams', status: teams.status, lastSyncedAt: teams.lastSyncedAt, lastError: teams.lastError, itemCount: teams.items.length }
       ]
     };
     const target = await dialog.showSaveDialog({ defaultPath: 'front-desk-diagnostics.json' });
