@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.4 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **A completed Google sign-in still ended in "Could not complete the request to Google."** — a
+  real tester hit this right after finishing the browser sign-in successfully. Root cause: any
+  thrown error (not just network failures) was being flattened through the same generic mapper,
+  which discarded oauth-pkce's own already-specific messages — including "The authorization
+  response did not match this request," the exact message produced by retrying in a stale sign-in
+  tab left over from an earlier attempt (e.g. one made before fixing the API-enablement issue).
+  Thrown errors now surface verbatim instead of being genericized, so this and similar cases are
+  actionable on sight instead of needing another round of screenshots to diagnose. If you hit this
+  again: close every Google sign-in tab first, then click Connect fresh from Settings.
+
 ## 0.1.3 — 2026-08-30 (unsigned)
 
 ### Fixed

@@ -22,18 +22,24 @@ function mapOAuthErrorCode(code: string): string | null {
   }
 }
 
-function mapError(status: number | null, body?: string): string {
-  if (body) {
-    try {
-      const parsed = JSON.parse(body) as { error?: string };
-      const mapped = typeof parsed.error === 'string' ? mapOAuthErrorCode(parsed.error) : null;
-      if (mapped) return mapped;
-    } catch { /* not JSON, or not shaped like an OAuth error — fall through */ }
-  }
+/** Maps a non-ok HTTP response from Google (status + body) to a human-readable message. */
+function mapError(status: number, body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { error?: string };
+    const mapped = typeof parsed.error === 'string' ? mapOAuthErrorCode(parsed.error) : null;
+    if (mapped) return mapped;
+  } catch { /* not JSON, or not shaped like an OAuth error — fall through to status-based mapping */ }
   if (status === 400 || status === 401) return 'Google did not accept that client ID and secret, or the sign-in was denied. Check the Google Cloud OAuth client configuration.';
   if (status === 403) return 'Google refused this request (403) — most likely the Gmail API and/or Google Drive API are not enabled for this Google Cloud project. Enable both under APIs & Services → Library, then try again.';
-  if (status !== null) return `Google responded with an unexpected error (status ${status}).`;
-  return body?.match(/network|fetch failed|ENOTFOUND|ECONNREFUSED/i) ? 'Could not reach Google. Check the network connection.' : 'Could not complete the request to Google.';
+  return `Google responded with an unexpected error (status ${status}).`;
+}
+
+/** Maps a *thrown* error (network failure, or one of oauth-pkce's own — already user-facing, like
+ * "Timed out waiting for sign-in" or a stale-tab state mismatch) — these aren't an HTTP response, so
+ * mapError's status/body-shaped logic doesn't apply. Show our own messages verbatim rather than
+ * flattening them into one generic, useless "could not complete the request" for every cause. */
+function mapThrownError(error: Error): string {
+  return /network|fetch failed|ENOTFOUND|ECONNREFUSED/i.test(error.message) ? 'Could not reach Google. Check the network connection.' : error.message;
 }
 
 interface GoogleReadResult {
@@ -44,11 +50,11 @@ interface GoogleReadResult {
 async function fetchGoogleData(accessToken: string, fetchImpl: FetchLike): Promise<AdapterResult<GoogleReadResult>> {
   const headers = { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' };
   const label = await fetchImpl('https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX', { headers });
-  if (!label.ok) return { ok: false, error: mapError(label.status) };
+  if (!label.ok) return { ok: false, error: mapError(label.status, await label.text()) };
   const labelBody = (await label.json()) as { messagesUnread?: number };
 
   const drive = await fetchImpl('https://www.googleapis.com/drive/v3/files?pageSize=5&orderBy=modifiedTime desc&fields=files(name,modifiedTime,webViewLink)', { headers });
-  if (!drive.ok) return { ok: false, error: mapError(drive.status) };
+  if (!drive.ok) return { ok: false, error: mapError(drive.status, await drive.text()) };
   const driveBody = (await drive.json()) as { files?: DriveFile[] };
 
   return { ok: true, value: { inboxUnread: labelBody.messagesUnread ?? 0, driveRecentFiles: driveBody.files ?? [] } };
@@ -77,7 +83,7 @@ export async function connectGoogle(input: GoogleConnectInput, fetchImpl: FetchL
     if (!data.ok) return { ok: false, error: data.error };
     return { ok: true, value: { refreshToken: tokenBody.refresh_token, ...data.value! } };
   } catch (cause) {
-    return { ok: false, error: cause instanceof Error ? mapError(null, cause.message) : 'Could not connect to Google.' };
+    return { ok: false, error: cause instanceof Error ? mapThrownError(cause) : 'Could not connect to Google.' };
   }
 }
 
@@ -92,6 +98,6 @@ export async function syncGoogle(input: GoogleConnectInput, refreshToken: string
     if (!tokenBody.access_token) return { ok: false, error: 'Google did not return a fresh access token.' };
     return fetchGoogleData(tokenBody.access_token, fetchImpl);
   } catch (cause) {
-    return { ok: false, error: cause instanceof Error ? mapError(null, cause.message) : 'Could not sync with Google.' };
+    return { ok: false, error: cause instanceof Error ? mapThrownError(cause) : 'Could not sync with Google.' };
   }
 }

@@ -42,6 +42,20 @@ describe('syncGoogle', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it('surfaces a thrown error message verbatim rather than flattening it to a generic message — regression test for oauth-pkce\'s own messages (e.g. a stale-tab state mismatch) getting discarded', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('The authorization response did not match this request.'));
+    const result = await syncGoogle(input, 'refresh-token', fetchImpl as unknown as typeof fetch);
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('The authorization response did not match this request.');
+  });
+
+  it('still maps a genuine network failure to a friendly message rather than a raw fetch error', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
+    const result = await syncGoogle(input, 'refresh-token', fetchImpl as unknown as typeof fetch);
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/could not reach google/i);
+  });
+
   it('never sends the refresh token or client secret in a URL query string', async () => {
     const fetchImpl = vi.fn().mockImplementation((url: string) => {
       expect(url).not.toContain('shh');
