@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ConnectorState, DeskDesign, DeskProfile, GoogleState, OutlookState, RoutineItem, AffirmationItem, QuickLaunchItem, WeatherState, RssState } from '../shared/contracts';
+import type { ConnectorState, DeskDesign, DeskProfile, GoogleState, OutlookState, RoutineItem, AffirmationItem, QuickLaunchItem, WeatherState, RssState, GitHubState } from '../shared/contracts';
 import { FocusCard } from './FocusCard';
 import { ProjectsCard } from './ProjectsCard';
 import { NotesCard } from './NotesCard';
@@ -44,15 +44,16 @@ function timeAgo(iso: string | null): string {
 
 /** Live status only — connected services and their data. Browsing/connecting new services lives in
  * Settings (see S1 feedback: a catalog of mostly-"unavailable" cards doesn't belong on the daily-use surface). */
-function ConnectionsCard({ jira, google, outlook, onSyncJira, onDisconnectJira, onSyncGoogle, onDisconnectGoogle, onSyncOutlook, onDisconnectOutlook, onOpenSettings, collapsed, onToggleCollapse }: {
-  jira: ConnectorState; google: GoogleState; outlook: OutlookState;
+function ConnectionsCard({ jira, google, outlook, github, onSyncJira, onDisconnectJira, onSyncGoogle, onDisconnectGoogle, onSyncOutlook, onDisconnectOutlook, onSyncGitHub, onDisconnectGitHub, onOpenSettings, collapsed, onToggleCollapse }: {
+  jira: ConnectorState; google: GoogleState; outlook: OutlookState; github: GitHubState;
   onSyncJira: () => Promise<void>; onDisconnectJira: () => Promise<void>;
   onSyncGoogle: () => Promise<void>; onDisconnectGoogle: () => Promise<void>;
   onSyncOutlook: () => Promise<void>; onDisconnectOutlook: () => Promise<void>;
+  onSyncGitHub: () => Promise<void>; onDisconnectGitHub: () => Promise<void>;
   onOpenSettings: () => void; collapsed?: boolean; onToggleCollapse?: () => void;
 }) {
-  const anyConnected = jira.status === 'connected' || google.status === 'connected' || outlook.status === 'connected';
-  const anyError = jira.status === 'error' || google.status === 'error' || outlook.status === 'error';
+  const anyConnected = jira.status === 'connected' || google.status === 'connected' || outlook.status === 'connected' || github.status === 'connected';
+  const anyError = jira.status === 'error' || google.status === 'error' || outlook.status === 'error' || github.status === 'error';
 
   if (!anyConnected && !anyError) {
     return <section className="panel"><div className="panel-heading collapsible" onClick={onToggleCollapse}><div><p className="eyebrow">CONNECTIONS</p><h2>Nothing connected yet</h2></div><span className={`chevron${collapsed ? ' collapsed' : ''}`}>⌄</span></div>
@@ -84,18 +85,26 @@ function ConnectionsCard({ jira, google, outlook, onSyncJira, onDisconnectJira, 
     </div>}
     {outlook.status === 'error' && <p className="form-status">{outlook.lastError}</p>}
 
+    {github.status === 'connected' && <div className="jira-summary">
+      <div className="panel-heading"><div><p className="eyebrow">GITHUB</p><h2>{github.items.length ? `${github.items.length} open issue/PR(s)` : 'Nothing open'}</h2></div><span>{timeAgo(github.lastSyncedAt)}</span></div>
+      {github.items.length > 0 && <ul className="ticket-list">{github.items.map((item) => <li key={item.key}><a onClick={() => void window.frontDesk.openContentLink(item.url)}>{item.key}</a><span>{item.title}</span><em>{item.kind === 'pull_request' ? 'PR' : 'Issue'}</em></li>)}</ul>}
+      <div className="actions"><button onClick={() => void onSyncGitHub()}>Sync now</button><button onClick={() => void onDisconnectGitHub()}>Disconnect</button></div>
+    </div>}
+    {github.status === 'error' && <p className="form-status">{github.lastError}</p>}
+
     <div className="actions" style={{ padding: '0 16px 14px' }}><button onClick={onOpenSettings}>Manage connections</button></div>
     </>}
   </section>;
 }
 
-export function Dashboard({ profile, jira, google, outlook, weather, rss, onSyncJira, onDisconnectJira, onSyncGoogle, onDisconnectGoogle, onSyncOutlook, onDisconnectOutlook, onSyncWeather, onDisconnectWeather, onSyncRss, onDisconnectRss, onOpenSettings, onUpdateDesign, onUpdateFocusText, onUpdateProjectItems, onUpdateNoteItems, onUpdateRoutines, onUpdateAffirmations, onUpdateQuickLaunch }: {
-  profile: DeskProfile; jira: ConnectorState; google: GoogleState; outlook: OutlookState; weather: WeatherState; rss: RssState;
+export function Dashboard({ profile, jira, google, outlook, weather, rss, github, onSyncJira, onDisconnectJira, onSyncGoogle, onDisconnectGoogle, onSyncOutlook, onDisconnectOutlook, onSyncWeather, onDisconnectWeather, onSyncRss, onDisconnectRss, onSyncGitHub, onDisconnectGitHub, onOpenSettings, onUpdateDesign, onUpdateFocusText, onUpdateProjectItems, onUpdateNoteItems, onUpdateRoutines, onUpdateAffirmations, onUpdateQuickLaunch }: {
+  profile: DeskProfile; jira: ConnectorState; google: GoogleState; outlook: OutlookState; weather: WeatherState; rss: RssState; github: GitHubState;
   onSyncJira: () => Promise<void>; onDisconnectJira: () => Promise<void>;
   onSyncGoogle: () => Promise<void>; onDisconnectGoogle: () => Promise<void>;
   onSyncOutlook: () => Promise<void>; onDisconnectOutlook: () => Promise<void>;
   onSyncWeather: () => Promise<void>; onDisconnectWeather: () => Promise<void>;
   onSyncRss: () => Promise<void>; onDisconnectRss: () => Promise<void>;
+  onSyncGitHub: () => Promise<void>; onDisconnectGitHub: () => Promise<void>;
   onOpenSettings: () => void;
   onUpdateDesign: (patch: Partial<DeskDesign>) => Promise<void>;
   onUpdateFocusText: (focusText: string) => void;
@@ -107,7 +116,7 @@ export function Dashboard({ profile, jira, google, outlook, weather, rss, onSync
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const cards = profile.design.cardOrder;
-  const connectedCount = [jira.status, google.status, outlook.status, weather.status, rss.status].filter((s) => s === 'connected').length;
+  const connectedCount = [jira.status, google.status, outlook.status, weather.status, rss.status, github.status].filter((s) => s === 'connected').length;
   const itemsAdded = profile.routines.length + profile.affirmations.length + profile.quickLaunch.length
     + profile.projectItems.length + profile.noteItems.length + (profile.focusText ? 1 : 0);
   const collapsedSet = new Set(profile.design.collapsedCards);
@@ -129,10 +138,11 @@ export function Dashboard({ profile, jira, google, outlook, weather, rss, onSync
       case 'weather': return <WeatherCard key={id} weather={weather} onSync={onSyncWeather} onDisconnect={onDisconnectWeather} collapsed={collapsed} onToggleCollapse={onToggleCollapse}/>;
       case 'rss': return <RssCard key={id} rss={rss} onSync={onSyncRss} onDisconnect={onDisconnectRss} collapsed={collapsed} onToggleCollapse={onToggleCollapse}/>;
       case 'quicklaunch': return <QuickLaunchCard key={id} links={profile.quickLaunch} useSampleData={profile.useSampleData} onUpdateLinks={onUpdateQuickLaunch} collapsed={collapsed} onToggleCollapse={onToggleCollapse}/>;
-      case 'connections': return <ConnectionsCard key={id} jira={jira} google={google} outlook={outlook}
+      case 'connections': return <ConnectionsCard key={id} jira={jira} google={google} outlook={outlook} github={github}
         onSyncJira={onSyncJira} onDisconnectJira={onDisconnectJira}
         onSyncGoogle={onSyncGoogle} onDisconnectGoogle={onDisconnectGoogle}
         onSyncOutlook={onSyncOutlook} onDisconnectOutlook={onDisconnectOutlook}
+        onSyncGitHub={onSyncGitHub} onDisconnectGitHub={onDisconnectGitHub}
         onOpenSettings={onOpenSettings} collapsed={collapsed} onToggleCollapse={onToggleCollapse}/>;
       default: return null;
     }

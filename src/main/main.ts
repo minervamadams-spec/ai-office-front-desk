@@ -5,8 +5,8 @@ import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { updateElectronApp } from 'update-electron-app';
 import {
-  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput,
-  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, ChromeProfileInfo
+  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput,
+  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, ChromeProfileInfo
 } from '../shared/contracts';
 import { ProfileRepository, sanitizeDesign } from './profile-repository';
 import { ConnectorStateRepository } from './connector-state-repository';
@@ -16,6 +16,7 @@ import { connectGoogle, syncGoogle } from './adapters/google-adapter';
 import { connectOutlook, syncOutlook } from './adapters/outlook-adapter';
 import { connectWeather, syncWeather } from './adapters/weather-adapter';
 import { connectRss, syncRss } from './adapters/rss-adapter';
+import { testGitHubConnection, syncGitHubItems } from './adapters/github-adapter';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -288,6 +289,33 @@ app.whenReady().then(() => {
     return connectorStates.read('jira', defaultJiraState);
   });
 
+  ipcMain.handle('connector:github:state', () => connectorStates.read('github', defaultGitHubState));
+  ipcMain.handle('connector:github:test', async (_event, input: GitHubConnectInput) => testGitHubConnection(input));
+  ipcMain.handle('connector:github:connect', async (_event, input: GitHubConnectInput) => {
+    const result = await testGitHubConnection(input);
+    if (!result.ok || !result.value) {
+      connectorStates.write('github', { status: 'error', config: null, lastSyncedAt: null, lastError: result.error ?? 'Connection failed.', items: [] }, null);
+      return connectorStates.read('github', defaultGitHubState);
+    }
+    const secretRef = secrets.store(input.token);
+    connectorStates.write('github', { status: 'connected', config: { login: result.value.login }, lastSyncedAt: null, lastError: null, items: [] }, secretRef);
+    return syncGitHubNow(result.value.login, input.token);
+  });
+  ipcMain.handle('connector:github:sync', async () => {
+    const state = connectorStates.read('github', defaultGitHubState);
+    const secretRef = connectorStates.readSecretRef('github');
+    if (state.status !== 'connected' || !state.config || !secretRef) return state;
+    const token = secrets.read(secretRef);
+    if (!token) return state;
+    return syncGitHubNow(state.config.login, token);
+  });
+  ipcMain.handle('connector:github:disconnect', () => {
+    const secretRef = connectorStates.readSecretRef('github');
+    if (secretRef) secrets.delete(secretRef);
+    connectorStates.clear('github');
+    return connectorStates.read('github', defaultGitHubState);
+  });
+
   ipcMain.handle('connector:google:state', () => connectorStates.read('google', defaultGoogleState));
   ipcMain.handle('connector:google:connect', async (_event, input: GoogleConnectInput) => {
     const result = await connectGoogle(input);
@@ -415,6 +443,7 @@ app.whenReady().then(() => {
     const outlook = connectorStates.read('outlook', defaultOutlookState);
     const weather = connectorStates.read('weather', defaultWeatherState);
     const rss = connectorStates.read('rss', defaultRssState);
+    const github = connectorStates.read('github', defaultGitHubState);
     const redacted = {
       exportedAt: new Date().toISOString(),
       connectors: [
@@ -422,7 +451,8 @@ app.whenReady().then(() => {
         { id: 'google', status: google.status, lastSyncedAt: google.lastSyncedAt, lastError: google.lastError },
         { id: 'outlook', status: outlook.status, lastSyncedAt: outlook.lastSyncedAt, lastError: outlook.lastError },
         { id: 'weather', status: weather.status, lastSyncedAt: weather.lastSyncedAt, lastError: weather.lastError },
-        { id: 'rss', status: rss.status, lastSyncedAt: rss.lastSyncedAt, lastError: rss.lastError, itemCount: rss.items.length }
+        { id: 'rss', status: rss.status, lastSyncedAt: rss.lastSyncedAt, lastError: rss.lastError, itemCount: rss.items.length },
+        { id: 'github', status: github.status, lastSyncedAt: github.lastSyncedAt, lastError: github.lastError, itemCount: github.items.length }
       ]
     };
     const target = await dialog.showSaveDialog({ defaultPath: 'front-desk-diagnostics.json' });
@@ -478,6 +508,17 @@ async function syncJiraNow(input: JiraConnectInput) {
     connectorStates.write('jira', { status: 'connected', config: { siteUrl: input.siteUrl, email: input.email, jql: input.jql }, lastSyncedAt: new Date().toISOString(), lastError: null, tickets: result.value ?? [] }, secretRef);
   }
   return connectorStates.read('jira', defaultJiraState);
+}
+
+async function syncGitHubNow(login: string, token: string) {
+  const result = await syncGitHubItems(login, token);
+  const secretRef = connectorStates.readSecretRef('github');
+  if (!result.ok) {
+    connectorStates.write('github', { status: 'error', config: { login }, lastSyncedAt: null, lastError: result.error ?? 'Sync failed.', items: [] }, secretRef);
+  } else {
+    connectorStates.write('github', { status: 'connected', config: { login }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
+  }
+  return connectorStates.read('github', defaultGitHubState);
 }
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

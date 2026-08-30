@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, WeatherState, RssState, QuickLaunchItem } from '../shared/contracts';
+import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, WeatherState, RssState, QuickLaunchItem, GitHubState } from '../shared/contracts';
 import { LayoutEditor } from './LayoutEditor';
 import { ServiceCatalogGrid } from './ServiceCatalogGrid';
 import { QuickLaunchManager } from './QuickLaunchCard';
 
-export function Settings({ profile, catalog, jira, google, outlook, weather, rss, onUpdateDesign, onUpdateQuickLaunch, onReopenWizard, onDisconnectJira, onDisconnectGoogle, onDisconnectOutlook, onDisconnectWeather, onDisconnectRss, onImportLayout, onDismissNotice, onSyncAll, onDeleteAll, onClose }: {
-  profile: DeskProfile; catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; weather: WeatherState; rss: RssState;
+export function Settings({ profile, catalog, jira, google, outlook, weather, rss, github, onUpdateDesign, onUpdateQuickLaunch, onReopenWizard, onDisconnectJira, onDisconnectGoogle, onDisconnectOutlook, onDisconnectWeather, onDisconnectRss, onDisconnectGitHub, onImportLayout, onDismissNotice, onSyncAll, onDeleteAll, onClose }: {
+  profile: DeskProfile; catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; weather: WeatherState; rss: RssState; github: GitHubState;
   onUpdateDesign: (patch: Partial<DeskProfile['design']>) => Promise<void>;
   onUpdateQuickLaunch: (links: QuickLaunchItem[]) => void;
   onReopenWizard: () => Promise<void>;
@@ -14,6 +14,7 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
   onDisconnectOutlook: () => Promise<void>;
   onDisconnectWeather: () => Promise<void>;
   onDisconnectRss: () => Promise<void>;
+  onDisconnectGitHub: () => Promise<void>;
   onImportLayout: () => Promise<{ imported: boolean; error?: string }>;
   onDismissNotice: (id: string) => void;
   onSyncAll: () => Promise<void>;
@@ -33,7 +34,7 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
     setLaunchAtLogin(await window.frontDesk.setLaunchAtLogin(!launchAtLogin));
   }
 
-  const connectedCount = [jira.status, google.status, outlook.status, weather.status, rss.status].filter((s) => s === 'connected').length;
+  const connectedCount = [jira.status, google.status, outlook.status, weather.status, rss.status, github.status].filter((s) => s === 'connected').length;
 
   async function exportDiagnostics() {
     const result = await window.frontDesk.exportDiagnostics();
@@ -75,9 +76,11 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
 
     <section><h3>Setup wizard</h3><p className="intro">Reopen the guided setup to revisit your first-run choices from the start.</p><div className="actions"><button onClick={() => void onReopenWizard()}>Reopen setup wizard</button></div></section>
 
-    <section><h3>Connect a service</h3><p className="intro">Every option explains what it can read and what you need before it can connect. Browsing this list never contacts anyone.</p><ServiceCatalogGrid catalog={catalog} jira={jira} google={google} outlook={outlook} dismissedNotices={profile.dismissedNotices} onDismissNotice={onDismissNotice}/></section>
+    <section><h3>Connect a service</h3><p className="intro">Every option explains what it can read and what you need before it can connect. Browsing this list never contacts anyone.</p><ServiceCatalogGrid catalog={catalog} jira={jira} google={google} outlook={outlook} github={github} dismissedNotices={profile.dismissedNotices} onDismissNotice={onDismissNotice}/></section>
 
     <section><h3>Jira connection</h3><p className="intro">Status: {jira.status === 'connected' ? `Connected to ${jira.config?.siteUrl}` : jira.status === 'error' ? `Error — ${jira.lastError}` : 'Not connected'}</p>{jira.status === 'connected' && <div className="actions"><button onClick={() => void onDisconnectJira()}>Disconnect & delete cached tickets</button></div>}</section>
+
+    <section><h3>GitHub connection</h3><p className="intro">Status: {github.status === 'connected' ? `Connected as ${github.config?.login}` : github.status === 'error' ? `Error — ${github.lastError}` : 'Not connected'}</p>{github.status === 'connected' && <div className="actions"><button onClick={() => void onDisconnectGitHub()}>Disconnect & delete cached data</button></div>}</section>
 
     <section><h3>Google connection</h3><p className="intro">Status: {google.status === 'connected' ? 'Connected' : google.status === 'error' ? `Error — ${google.lastError}` : 'Not connected'}</p>{google.status === 'connected' && <div className="actions"><button onClick={() => void onDisconnectGoogle()}>Disconnect & delete cached data</button></div>}</section>
 

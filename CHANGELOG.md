@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **GitHub is now a real, working connector** — the first step in closing the gap between "documented
+  as needing a connector" and actually having one. Reads open issues and pull requests assigned to or
+  mentioning you via a read-only, fine-grained personal access token (same installer-owned-token
+  pattern as Jira — no OAuth app registration needed). Shows up in Connections on the dashboard the
+  same way Jira/Google/Outlook do, with sync/disconnect.
+- Teams, Miro, Slack, Notion, Linear, Asana, and Trello remain genuinely unbuilt — the Settings catalog
+  is honest about this rather than implying they're available elsewhere.
+
 ## 0.4.1 — 2026-08-30 (unsigned)
 
 ### Fixed

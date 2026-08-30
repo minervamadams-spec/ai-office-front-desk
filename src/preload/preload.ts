@@ -2,8 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   ConnectorState, ConnectorManifest, DeskDesign, DeskProfile, JiraConnectInput,
   GoogleState, GoogleConnectInput, OutlookState, OutlookConnectInput,
-  WeatherState, WeatherConnectInput, RssState, RssConnectInput, ChromeProfileInfo
+  WeatherState, WeatherConnectInput, RssState, RssConnectInput, ChromeProfileInfo,
+  GitHubState, GitHubConnectInput
 } from '../shared/contracts';
+import type { AdapterResult as GitHubAdapterResult } from '../main/adapters/github-adapter';
 import type { AdapterResult } from '../main/adapters/jira-adapter';
 
 const api = {
@@ -29,6 +31,13 @@ const api = {
     connect: (input: JiraConnectInput): Promise<ConnectorState> => ipcRenderer.invoke('connector:jira:connect', input),
     sync: (): Promise<ConnectorState> => ipcRenderer.invoke('connector:jira:sync'),
     disconnect: (): Promise<ConnectorState> => ipcRenderer.invoke('connector:jira:disconnect')
+  },
+  github: {
+    state: (): Promise<GitHubState> => ipcRenderer.invoke('connector:github:state'),
+    test: (input: GitHubConnectInput): Promise<GitHubAdapterResult<{ login: string }>> => ipcRenderer.invoke('connector:github:test', input),
+    connect: (input: GitHubConnectInput): Promise<GitHubState> => ipcRenderer.invoke('connector:github:connect', input),
+    sync: (): Promise<GitHubState> => ipcRenderer.invoke('connector:github:sync'),
+    disconnect: (): Promise<GitHubState> => ipcRenderer.invoke('connector:github:disconnect')
   },
   google: {
     state: (): Promise<GoogleState> => ipcRenderer.invoke('connector:google:state'),
