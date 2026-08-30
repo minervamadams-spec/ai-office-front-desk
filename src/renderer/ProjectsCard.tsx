@@ -1,0 +1,10 @@
+import type { RoutineItem } from '../shared/contracts';
+import { sampleProjects } from '../shared/contracts';
+import { ListCard } from './ListCard';
+
+export function ProjectsCard({ items, useSampleData, onUpdate }: {
+  items: RoutineItem[]; useSampleData: boolean; onUpdate: (items: RoutineItem[]) => void;
+}) {
+  return <ListCard eyebrow="PROJECTS & TASKS" heading="Projects & tasks" items={items} useSampleData={useSampleData} sampleItems={sampleProjects} onUpdate={onUpdate}
+    titlePlaceholder="Project or task" detailPlaceholder="e.g. Due in 6 days · 3 open tasks" addButtonLabel="Add" emptyMessage="No projects yet."/>;
+}
