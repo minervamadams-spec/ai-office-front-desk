@@ -11,7 +11,7 @@ export const ALL_CARDS = [
   { id: 'affirmations', label: 'Affirmations', description: 'A list you keep yourself, with one featured each day on rotation.' },
   { id: 'weather', label: 'Weather', description: 'Current temperature and conditions for one location you choose — no account needed.' },
   { id: 'rss', label: 'RSS feed', description: 'Recent items from one RSS or Atom feed URL you paste in.' },
-  { id: 'quicklaunch', label: 'Quick launch', description: 'One-click links you maintain — AI tools like Claude or ChatGPT, docs, anything.' }
+  { id: 'quicklaunch', label: 'Quick launch', description: 'One-click links, local apps, or a link that opens in one specific Chrome profile — you maintain the list.' }
 ];
 
 /** Shared card-visibility + column-arrangement editor — used by both the first-run wizard and Settings,

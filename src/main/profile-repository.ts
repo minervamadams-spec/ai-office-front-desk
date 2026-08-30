@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import {
-  DeskDesign, DeskProfile, RoutineItem, AffirmationItem, QuickLaunchItem,
+  DeskDesign, DeskProfile, RoutineItem, AffirmationItem, QuickLaunchItem, QuickLaunchKind,
   defaultDesign, defaultProfile, knownCardIds, MAX_ROUTINES, MAX_AFFIRMATIONS, MAX_QUICK_LAUNCH, MAX_PROJECT_ITEMS, MAX_NOTE_ITEMS
 } from '../shared/contracts';
 
@@ -45,11 +45,20 @@ function sanitizeAffirmations(candidate: unknown): AffirmationItem[] {
 }
 
 function sanitizeQuickLaunch(candidate: unknown): QuickLaunchItem[] {
-  return sanitizeItemList<QuickLaunchItem>(candidate, MAX_QUICK_LAUNCH, (item) => ({
-    id: item.id as string,
-    label: typeof item.label === 'string' ? item.label.slice(0, 60) : '',
-    url: typeof item.url === 'string' && isHttpUrl(item.url) ? item.url : ''
-  })).filter((item) => item.url !== '');
+  return sanitizeItemList<QuickLaunchItem>(candidate, MAX_QUICK_LAUNCH, (item) => {
+    // Missing/unrecognized kind defaults to 'link' — that's the only shape this field had before
+    // 'app' and 'chrome-profile' existed, so old stored data keeps working unchanged.
+    const kind: QuickLaunchKind = item.kind === 'app' || item.kind === 'chrome-profile' ? item.kind : 'link';
+    const url = typeof item.url === 'string' && isHttpUrl(item.url) ? item.url : '';
+    const target = typeof item.target === 'string' ? item.target.slice(0, 120) : '';
+    return {
+      id: item.id as string,
+      label: typeof item.label === 'string' ? item.label.slice(0, 60) : '',
+      kind,
+      url: kind === 'app' ? '' : url,
+      target: kind === 'link' ? '' : target
+    };
+  }).filter((item) => (item.kind === 'link' ? item.url !== '' : item.kind === 'app' ? item.target !== '' : item.url !== '' && item.target !== ''));
 }
 
 /** Exported so the layout-only import feature can validate untrusted file content through the exact

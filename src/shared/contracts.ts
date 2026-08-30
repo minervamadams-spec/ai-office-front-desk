@@ -21,10 +21,27 @@ export interface AffirmationItem {
   text: string;
 }
 
+/** 'link' opens `url` in the default browser (the original, and still simplest, behavior).
+ * 'app' launches a local application by name — `target` — ignoring `url`. macOS only for now.
+ * 'chrome-profile' opens `url` specifically inside the Chrome profile named by `target` (its on-disk
+ * profile directory, e.g. "Profile 3") — for installers who keep separate Chrome profiles per Google
+ * account (e.g. a personal account plus a child's school account) and need a link to always open in
+ * the right one rather than whichever profile Chrome happens to have focused. macOS only for now. */
+export type QuickLaunchKind = 'link' | 'app' | 'chrome-profile';
+
 export interface QuickLaunchItem {
   id: string;
   label: string;
+  kind: QuickLaunchKind;
   url: string;
+  target: string;
+}
+
+export interface ChromeProfileInfo {
+  /** The on-disk profile directory name (e.g. "Default", "Profile 3") — not shown to the user. */
+  directory: string;
+  /** Display label built from the profile's own name and signed-in account, e.g. "Justin (justin@school.edu)". */
+  label: string;
 }
 
 export interface DeskProfile {
@@ -58,9 +75,9 @@ export const sampleAffirmations: AffirmationItem[] = [
 // Suggestions only — encourages installers curious about AI to try one, but this card is a plain link
 // launcher for anything (AI tools, internal tools, docs). Nothing here is a real connection.
 export const sampleQuickLaunch: QuickLaunchItem[] = [
-  { id: 'q1', label: 'Claude', url: 'https://claude.ai' },
-  { id: 'q2', label: 'ChatGPT', url: 'https://chatgpt.com' },
-  { id: 'q3', label: 'Gemini', url: 'https://gemini.google.com' }
+  { id: 'q1', label: 'Claude', kind: 'link', url: 'https://claude.ai', target: '' },
+  { id: 'q2', label: 'ChatGPT', kind: 'link', url: 'https://chatgpt.com', target: '' },
+  { id: 'q3', label: 'Gemini', kind: 'link', url: 'https://gemini.google.com', target: '' }
 ];
 
 export type ConnectionStatus = 'disconnected' | 'connected' | 'error';

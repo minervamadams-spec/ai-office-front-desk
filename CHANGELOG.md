@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- Quick Launch now supports two new kinds of entry alongside plain web links (macOS only):
+  - **Local app** — launches an installed Mac app by name (e.g. "Roblox"), for anything that isn't
+    a website.
+  - **Link in a specific Chrome profile** — opens a URL inside a *named* Chrome profile rather than
+    whichever one Chrome currently has focused. Built for installers who keep separate Chrome
+    profiles per Google account (e.g. a personal profile and a child's school profile) and want a
+    link to always land in the right one. The profile picker reads Chrome's own profile list (name
+    + signed-in account) directly, so nobody has to know or guess Chrome's internal "Profile 3"-
+    style folder names.
+- Both new kinds run the local command via an argument array, never a shell string, so nothing
+  typed into a name/URL/profile field can be interpreted as a shell command.
+
 ## 0.1.4 — 2026-08-30 (unsigned)
 
 ### Fixed

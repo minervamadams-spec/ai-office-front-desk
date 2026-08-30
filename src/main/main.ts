@@ -1,11 +1,12 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, safeStorage, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, execFile, type ChildProcess } from 'node:child_process';
+import { promisify } from 'node:util';
 import { updateElectronApp } from 'update-electron-app';
 import {
   connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput,
-  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState
+  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, ChromeProfileInfo
 } from '../shared/contracts';
 import { ProfileRepository, sanitizeDesign } from './profile-repository';
 import { ConnectorStateRepository } from './connector-state-repository';
@@ -66,6 +67,26 @@ const dashboardUrl = process.env.FRONT_DESK_DASHBOARD_URL || 'http://127.0.0.1:4
 
 function dashboardRoot(): string {
   return process.env.FRONT_DESK_DASHBOARD_ROOT || path.join(app.getPath('home'), 'Projects', 'GitHub', 'portfolio-dashboard');
+}
+
+const execFileAsync = promisify(execFile);
+
+/** Reads Chrome's own profile registry to list its profiles by their real name and signed-in Google
+ * account — installers with e.g. a personal profile and a child's school profile shouldn't have to
+ * know or guess Chrome's internal "Profile 3"-style directory names. macOS only for now. */
+async function listChromeProfiles(): Promise<ChromeProfileInfo[]> {
+  if (process.platform !== 'darwin') return [];
+  try {
+    const localStatePath = path.join(app.getPath('home'), 'Library', 'Application Support', 'Google', 'Chrome', 'Local State');
+    const parsed = JSON.parse(fs.readFileSync(localStatePath, 'utf8')) as { profile?: { info_cache?: Record<string, { name?: string; user_name?: string }> } };
+    const cache = parsed.profile?.info_cache ?? {};
+    return Object.entries(cache).map(([directory, meta]) => ({
+      directory,
+      label: meta.user_name ? `${meta.name || directory} (${meta.user_name})` : (meta.name || directory)
+    }));
+  } catch {
+    return [];
+  }
 }
 
 async function dashboardIsAvailable(): Promise<boolean> {
@@ -189,6 +210,25 @@ app.whenReady().then(() => {
     const url = new URL(rawUrl);
     if (url.protocol !== 'https:') throw new Error('Only secure (https) links can be opened.');
     return shell.openExternal(url.toString());
+  });
+
+  // Quick Launch's 'app' and 'chrome-profile' kinds — installer-configured (typed in via Settings,
+  // not attacker-controlled), but still passed as argv array elements (never a shell string) so
+  // nothing in a name/URL/profile value is ever interpreted as a shell command.
+  ipcMain.handle('quicklaunch:list-chrome-profiles', () => listChromeProfiles());
+  ipcMain.handle('quicklaunch:open-app', async (_event, appName: string) => {
+    if (process.platform !== 'darwin') throw new Error('Launching a local app is only supported on macOS right now.');
+    const trimmed = appName.trim();
+    if (!trimmed) throw new Error('No app name given.');
+    await execFileAsync('open', ['-a', trimmed]);
+  });
+  ipcMain.handle('quicklaunch:open-chrome-profile', async (_event, input: { url: string; profileDirectory: string }) => {
+    if (process.platform !== 'darwin') throw new Error('Opening a specific Chrome profile is only supported on macOS right now.');
+    const url = new URL(input.url);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('Only http/https links can be opened.');
+    const profileDirectory = input.profileDirectory.trim();
+    if (!profileDirectory) throw new Error('No Chrome profile given.');
+    await execFileAsync('open', ['-a', 'Google Chrome', '--args', `--profile-directory=${profileDirectory}`, url.toString()]);
   });
 
   ipcMain.handle('connector:jira:state', () => connectorStates.read('jira', defaultJiraState));

@@ -150,11 +150,11 @@ describe('ProfileRepository layout persistence', () => {
   it('persists a real, user-added quick-launch link across repository instances', () => {
     const dbPath = tempPath();
     const first = new ProfileRepository(dbPath);
-    first.save({ ...first.read(), quickLaunch: [{ id: 'q1', label: 'Claude', url: 'https://claude.ai' }] });
+    first.save({ ...first.read(), quickLaunch: [{ id: 'q1', label: 'Claude', kind: 'link', url: 'https://claude.ai', target: '' }] });
     first.close();
 
     const second = new ProfileRepository(dbPath);
-    expect(second.read().quickLaunch).toEqual([{ id: 'q1', label: 'Claude', url: 'https://claude.ai' }]);
+    expect(second.read().quickLaunch).toEqual([{ id: 'q1', label: 'Claude', kind: 'link', url: 'https://claude.ai', target: '' }]);
     second.close();
   });
 
@@ -164,7 +164,42 @@ describe('ProfileRepository layout persistence', () => {
     repo['db'].prepare('INSERT OR REPLACE INTO profiles (id, value) VALUES (?, ?)').run('primary', JSON.stringify({
       quickLaunch: [{ id: 'q1', label: 'Safe', url: 'https://example.com' }, { id: 'q2', label: 'Unsafe', url: 'javascript:alert(1)' }, { id: 'q3', label: 'No URL' }]
     }));
-    expect(repo.read().quickLaunch).toEqual([{ id: 'q1', label: 'Safe', url: 'https://example.com' }]);
+    expect(repo.read().quickLaunch).toEqual([{ id: 'q1', label: 'Safe', kind: 'link', url: 'https://example.com', target: '' }]);
+    repo.close();
+  });
+
+  it('defaults a stored quick-launch entry with no kind at all to "link" — back-compat with data saved before app/chrome-profile existed', () => {
+    const dbPath = tempPath();
+    const repo = new ProfileRepository(dbPath);
+    repo['db'].prepare('INSERT OR REPLACE INTO profiles (id, value) VALUES (?, ?)').run('primary', JSON.stringify({
+      quickLaunch: [{ id: 'q1', label: 'Old-style link', url: 'https://example.com' }]
+    }));
+    expect(repo.read().quickLaunch).toEqual([{ id: 'q1', label: 'Old-style link', kind: 'link', url: 'https://example.com', target: '' }]);
+    repo.close();
+  });
+
+  it('persists an "app" quick-launch entry (a local app name, no URL) across repository instances', () => {
+    const dbPath = tempPath();
+    const first = new ProfileRepository(dbPath);
+    first.save({ ...first.read(), quickLaunch: [{ id: 'q1', label: 'Roblox', kind: 'app', url: '', target: 'Roblox' }] });
+    first.close();
+
+    const second = new ProfileRepository(dbPath);
+    expect(second.read().quickLaunch).toEqual([{ id: 'q1', label: 'Roblox', kind: 'app', url: '', target: 'Roblox' }]);
+    second.close();
+  });
+
+  it('drops an "app" quick-launch entry with no app name, and a "chrome-profile" entry missing either half', () => {
+    const dbPath = tempPath();
+    const repo = new ProfileRepository(dbPath);
+    repo['db'].prepare('INSERT OR REPLACE INTO profiles (id, value) VALUES (?, ?)').run('primary', JSON.stringify({
+      quickLaunch: [
+        { id: 'q1', label: 'No app name', kind: 'app', url: '', target: '' },
+        { id: 'q2', label: 'No profile chosen', kind: 'chrome-profile', url: 'https://classroom.google.com', target: '' },
+        { id: 'q3', label: 'Real one', kind: 'chrome-profile', url: 'https://classroom.google.com', target: 'Profile 3' }
+      ]
+    }));
+    expect(repo.read().quickLaunch).toEqual([{ id: 'q3', label: 'Real one', kind: 'chrome-profile', url: 'https://classroom.google.com', target: 'Profile 3' }]);
     repo.close();
   });
 

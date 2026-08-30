@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   ConnectorState, ConnectorManifest, DeskDesign, DeskProfile, JiraConnectInput,
   GoogleState, GoogleConnectInput, OutlookState, OutlookConnectInput,
-  WeatherState, WeatherConnectInput, RssState, RssConnectInput
+  WeatherState, WeatherConnectInput, RssState, RssConnectInput, ChromeProfileInfo
 } from '../shared/contracts';
 import type { AdapterResult } from '../main/adapters/jira-adapter';
 
@@ -15,6 +15,9 @@ const api = {
   isSecureStorageAvailable: (): Promise<boolean> => ipcRenderer.invoke('security:available'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('external:open', url),
   openContentLink: (url: string): Promise<void> => ipcRenderer.invoke('external:open-content-link', url),
+  listChromeProfiles: (): Promise<ChromeProfileInfo[]> => ipcRenderer.invoke('quicklaunch:list-chrome-profiles'),
+  launchApp: (appName: string): Promise<void> => ipcRenderer.invoke('quicklaunch:open-app', appName),
+  openInChromeProfile: (url: string, profileDirectory: string): Promise<void> => ipcRenderer.invoke('quicklaunch:open-chrome-profile', { url, profileDirectory }),
   exportDiagnostics: (): Promise<{ saved: boolean; path?: string }> => ipcRenderer.invoke('diagnostics:export'),
   exportLayout: (): Promise<{ saved: boolean; path?: string }> => ipcRenderer.invoke('layout:export'),
   importLayout: (): Promise<{ imported: boolean; error?: string; profile?: DeskProfile }> => ipcRenderer.invoke('layout:import'),
