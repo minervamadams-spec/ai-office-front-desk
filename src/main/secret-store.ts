@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 
 export interface SecretCipher {
@@ -11,10 +11,10 @@ export interface SecretCipher {
  * so a caller that only holds a ConnectorState (which carries this id) can never leak a token.
  */
 export class SecretStore {
-  private readonly db: DatabaseSync;
+  private readonly db: Database.Database;
 
   constructor(path: string, private readonly cipher: SecretCipher) {
-    this.db = new DatabaseSync(path);
+    this.db = new Database(path);
     this.db.exec('CREATE TABLE IF NOT EXISTS secrets (id TEXT PRIMARY KEY, ciphertext BLOB NOT NULL)');
   }
 

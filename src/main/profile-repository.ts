@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+import Database from 'better-sqlite3';
 import {
   DeskDesign, DeskProfile, RoutineItem, AffirmationItem, QuickLaunchItem,
   defaultDesign, defaultProfile, knownCardIds, MAX_ROUTINES, MAX_AFFIRMATIONS, MAX_QUICK_LAUNCH, MAX_PROJECT_ITEMS, MAX_NOTE_ITEMS
@@ -73,10 +73,10 @@ export function sanitizeDesign(candidate: unknown): DeskDesign {
 }
 
 export class ProfileRepository {
-  private readonly db: DatabaseSync;
+  private readonly db: Database.Database;
 
   constructor(path: string) {
-    this.db = new DatabaseSync(path);
+    this.db = new Database(path);
     this.db.exec('CREATE TABLE IF NOT EXISTS profiles (id TEXT PRIMARY KEY, value TEXT NOT NULL)');
   }
 

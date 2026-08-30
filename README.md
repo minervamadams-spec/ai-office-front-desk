@@ -16,7 +16,9 @@ either the `.dmg` or the zip (`out/make/zip/darwin/arm64/*.zip` — it includes 
 `README.txt` alongside the app, written for a non-technical installer, not a developer). Either
 way:
 
-- **macOS**: open the `.dmg` (or unzip the zip) and drag the app into `Applications`.
+- **macOS 10.15 (Catalina) or later**: open the `.dmg` (or unzip the zip) and drag the app into
+  `Applications`. (Pinned to Electron 32 specifically for this — Electron 33+ raised its own
+  minimum to macOS 11/Big Sur.)
 - **Windows**: run the generated Squirrel setup `.exe` from `out/make/squirrel.windows/<arch>/`.
 
 The app is unsigned (no Apple Developer / code-signing certificate configured yet), so macOS
@@ -78,6 +80,19 @@ If you ever reinstall `node_modules` under a different Node version than you las
 with, native modules (like the DMG maker's `macos-alias`) will be built for the wrong Node ABI and
 `npm run make` will fail with a `NODE_MODULE_VERSION` mismatch — just `npm install` again under
 Node 22.
+
+### Native modules: two different runtimes, two different rebuilds
+
+This app stores its data via `better-sqlite3`, a native module — meaning `node_modules` always
+holds *one* compiled binary at a time, built for whichever runtime last asked for it. `npm test`
+runs under plain Node (host, v22); the packaged app runs under Electron 32's own bundled Node
+(v20). These are different ABIs, and a binary built for one segfaults outright under the other —
+it doesn't just fail to load. Both `npm test` (via a `pretest` hook) and every packaging command
+(`package`/`make`/`publish`, via forge.config.ts's `prePackage` hook) rebuild it automatically for
+whichever runtime they need, so this shouldn't ever need to be done by hand — but if you see a
+`NODE_MODULE_VERSION` mismatch or a silent crash with no error at all, that's what's wrong, and
+`npm rebuild better-sqlite3` (for tests) or `npx electron-rebuild -f -w better-sqlite3` (for the
+packaged app) fixes it directly.
 
 ### Regenerating the app icon
 

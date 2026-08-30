@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+import Database from 'better-sqlite3';
 
 interface StoredRow<T> {
   value: T;
@@ -7,10 +7,10 @@ interface StoredRow<T> {
 
 /** Generic per-connector JSON blob store, keyed by connector id. Callers own their own state shape. */
 export class ConnectorStateRepository {
-  private readonly db: DatabaseSync;
+  private readonly db: Database.Database;
 
   constructor(path: string) {
-    this.db = new DatabaseSync(path);
+    this.db = new Database(path);
     this.db.exec('CREATE TABLE IF NOT EXISTS connector_state (id TEXT PRIMARY KEY, value TEXT NOT NULL)');
   }
 

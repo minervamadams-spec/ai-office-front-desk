@@ -26,12 +26,19 @@ const config: ForgeConfig = {
     icon: 'assets/icon',
     darwinDarkModeSupport: true,
     // The Vite plugin's packaging ignore only lets `.vite/` through (see its own resolveForgeConfig) —
-    // this hook runs after that copy step to also carry over the runtime window icon (used for the
-    // Windows/Linux taskbar; macOS Dock icon comes from Info.plist via packagerConfig.icon above).
+    // these hooks run after that copy step to carry over what else the app needs at runtime that
+    // Vite can't bundle into main.js: the window icon (Windows/Linux taskbar; macOS Dock icon comes
+    // from Info.plist via packagerConfig.icon above) and better-sqlite3's native binary (a real
+    // .node file, not JS — main.js just does a plain `require('better-sqlite3')` for it at runtime,
+    // which needs the real package, AND its own `bindings`/`file-uri-to-path` runtime dependencies
+    // (used to locate the compiled binary), present under node_modules relative to main.js).
     afterCopy: [
       (buildPath, _electronVersion, _platform, _arch, callback) => {
         fs.mkdirSync(path.join(buildPath, 'assets'), { recursive: true });
         fs.copyFileSync(path.resolve(__dirname, 'assets/icon.png'), path.join(buildPath, 'assets/icon.png'));
+        for (const dep of ['better-sqlite3', 'bindings', 'file-uri-to-path']) {
+          fs.cpSync(path.resolve(__dirname, 'node_modules', dep), path.join(buildPath, 'node_modules', dep), { recursive: true });
+        }
         callback();
       }
     ]
@@ -45,6 +52,14 @@ const config: ForgeConfig = {
   // serves published releases; a draft release silently never reaches anyone already installed.
   publishers: UPDATE_REPO_OWNER ? [new PublisherGithub({ repository: { owner: UPDATE_REPO_OWNER, name: UPDATE_REPO_NAME }, prerelease: false, draft: false })] : [],
   hooks: {
+    // better-sqlite3 is a native module — whatever ABI it's currently built for (plain Node, from
+    // `npm install` or `npm test` last rebuilding it) is very likely NOT what the packaged app's
+    // Electron runtime needs, and a mismatched build doesn't just fail to load — it *segfaults* the
+    // whole process. Rebuilding it for Electron right before every package/make/publish means this
+    // is never something that has to be remembered by hand.
+    prePackage: async () => {
+      execFileSync('npx', ['electron-rebuild', '-f', '-w', 'better-sqlite3'], { cwd: __dirname, stdio: 'inherit' });
+    },
     // Drops a plain-text README next to the .app in every packaged output directory.
     postPackage: async (_config, { outputPaths }) => {
       packagedOutputPaths = outputPaths;

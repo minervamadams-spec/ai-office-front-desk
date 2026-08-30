@@ -1,7 +1,7 @@
 {
   "name": "ai-office-front-desk",
   "productName": "AI Office Front Desk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "license": "UNLICENSED",
   "description": "A local-first, installer-owned desktop work desk.",
@@ -14,6 +14,7 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
+    "pretest": "npm rebuild better-sqlite3",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "pretest:e2e": "electron-forge package",
@@ -27,22 +28,24 @@
     "@electron-forge/plugin-vite": "^7.8.1",
     "@electron-forge/publisher-github": "^7.11.2",
     "@playwright/test": "^1.62.1",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.15.3",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
-    "electron": "^36.2.1",
+    "electron": "^32.3.3",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vitest": "^3.1.3"
   },
   "dependencies": {
+    "better-sqlite3": "^12.4.1",
     "fast-xml-parser": "^5.11.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "update-electron-app": "^3.3.0"
   },
   "allowScripts": {
-    "electron@36.9.5": true
+    "electron@32.3.3": true
   }
 }

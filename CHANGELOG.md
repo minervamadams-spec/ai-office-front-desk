@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.1 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **macOS 10.15 (Catalina) couldn't install the app at all** — "You have macOS 10.15.8. The
+  application requires macOS 11.0 or later." Electron 36's own minimum target is macOS 11; the app
+  is now built on Electron 32, the newest major that still supports 10.15.
+- Switched the storage engine from `node:sqlite` (a Node built-in) to `better-sqlite3`, because
+  Electron 32 bundles Node 20.x, which doesn't have `node:sqlite` at all (added in Node 22.5). Same
+  SQLite file format underneath — existing installs' data reads back unchanged, verified directly
+  against a real profile carried over from the previous build.
+- That native-module swap uncovered a real packaging gap: the copied `better-sqlite3` didn't carry
+  its own `bindings`/`file-uri-to-path` runtime dependencies, so the packaged app's stores silently
+  failed to initialize (process stayed alive, but never fully started) — fixed, and now covered by
+  `e2e/packaged-native-module.spec.ts`, which specifically drives the real packaged `.app` rather
+  than the dev-mode build every other E2E test uses (that gap is exactly how this shipped once
+  already without being caught).
+- Rebuilding `better-sqlite3` for whichever runtime needs it (plain Node for tests, Electron for
+  the packaged app) is now automatic — see README's "Native modules" section — rather than a step
+  that has to be remembered by hand.
+
 ## 0.1.0 — 2026-08-30 (unreleased, unsigned)
 
 Initial pilot build. Not yet code-signed or notarized — see "Known limitations" below.
