@@ -4,11 +4,12 @@ import type {
   GoogleState, GoogleConnectInput, OutlookState, OutlookConnectInput,
   WeatherState, WeatherConnectInput, RssState, RssConnectInput, ChromeProfileInfo,
   GitHubState, GitHubConnectInput, SlackState, SlackConnectInput, TeamsState, TeamsConnectInput,
-  NotionState, NotionConnectInput
+  NotionState, NotionConnectInput, LinearState, LinearConnectInput
 } from '../shared/contracts';
 import type { AdapterResult as GitHubAdapterResult } from '../main/adapters/github-adapter';
 import type { AdapterResult as SlackAdapterResult } from '../main/adapters/slack-adapter';
 import type { AdapterResult as NotionAdapterResult } from '../main/adapters/notion-adapter';
+import type { AdapterResult as LinearAdapterResult } from '../main/adapters/linear-adapter';
 import type { AdapterResult } from '../main/adapters/jira-adapter';
 
 const api = {
@@ -61,6 +62,13 @@ const api = {
     connect: (input: NotionConnectInput): Promise<NotionState> => ipcRenderer.invoke('connector:notion:connect', input),
     sync: (): Promise<NotionState> => ipcRenderer.invoke('connector:notion:sync'),
     disconnect: (): Promise<NotionState> => ipcRenderer.invoke('connector:notion:disconnect')
+  },
+  linear: {
+    state: (): Promise<LinearState> => ipcRenderer.invoke('connector:linear:state'),
+    test: (input: LinearConnectInput): Promise<LinearAdapterResult<{ name: string }>> => ipcRenderer.invoke('connector:linear:test', input),
+    connect: (input: LinearConnectInput): Promise<LinearState> => ipcRenderer.invoke('connector:linear:connect', input),
+    sync: (): Promise<LinearState> => ipcRenderer.invoke('connector:linear:sync'),
+    disconnect: (): Promise<LinearState> => ipcRenderer.invoke('connector:linear:disconnect')
   },
   google: {
     state: (): Promise<GoogleState> => ipcRenderer.invoke('connector:google:state'),

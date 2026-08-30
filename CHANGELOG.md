@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **Linear is now a real, working connector** — the fifth. A personal API key from your own Linear
+  account, no OAuth needed. Shows issues currently assigned to you: identifier, title, state, and a
+  link.
+
 ## 0.8.0 — 2026-08-30 (unsigned)
 
 ### Added

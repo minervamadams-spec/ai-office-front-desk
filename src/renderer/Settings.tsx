@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, WeatherState, RssState, QuickLaunchItem, GitHubState, SlackState, TeamsState, NotionState } from '../shared/contracts';
+import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, WeatherState, RssState, QuickLaunchItem, GitHubState, SlackState, TeamsState, NotionState, LinearState } from '../shared/contracts';
 import { LayoutEditor } from './LayoutEditor';
 import { ServiceCatalogGrid } from './ServiceCatalogGrid';
 import { QuickLaunchManager } from './QuickLaunchCard';
 
-export function Settings({ profile, catalog, jira, google, outlook, weather, rss, github, slack, teams, notion, onUpdateDesign, onUpdateQuickLaunch, onReopenWizard, onDisconnectJira, onDisconnectGoogle, onDisconnectOutlook, onDisconnectWeather, onDisconnectRss, onDisconnectGitHub, onDisconnectSlack, onDisconnectTeams, onDisconnectNotion, onImportLayout, onDismissNotice, onSyncAll, onDeleteAll, onClose }: {
-  profile: DeskProfile; catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; weather: WeatherState; rss: RssState; github: GitHubState; slack: SlackState; teams: TeamsState; notion: NotionState;
+export function Settings({ profile, catalog, jira, google, outlook, weather, rss, github, slack, teams, notion, linear, onUpdateDesign, onUpdateQuickLaunch, onReopenWizard, onDisconnectJira, onDisconnectGoogle, onDisconnectOutlook, onDisconnectWeather, onDisconnectRss, onDisconnectGitHub, onDisconnectSlack, onDisconnectTeams, onDisconnectNotion, onDisconnectLinear, onImportLayout, onDismissNotice, onSyncAll, onDeleteAll, onClose }: {
+  profile: DeskProfile; catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; weather: WeatherState; rss: RssState; github: GitHubState; slack: SlackState; teams: TeamsState; notion: NotionState; linear: LinearState;
   onUpdateDesign: (patch: Partial<DeskProfile['design']>) => Promise<void>;
   onUpdateQuickLaunch: (links: QuickLaunchItem[]) => void;
   onReopenWizard: () => Promise<void>;
@@ -18,6 +18,7 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
   onDisconnectSlack: () => Promise<void>;
   onDisconnectTeams: () => Promise<void>;
   onDisconnectNotion: () => Promise<void>;
+  onDisconnectLinear: () => Promise<void>;
   onImportLayout: () => Promise<{ imported: boolean; error?: string }>;
   onDismissNotice: (id: string) => void;
   onSyncAll: () => Promise<void>;
@@ -37,7 +38,7 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
     setLaunchAtLogin(await window.frontDesk.setLaunchAtLogin(!launchAtLogin));
   }
 
-  const connectedCount = [jira.status, google.status, outlook.status, weather.status, rss.status, github.status, slack.status, teams.status, notion.status].filter((s) => s === 'connected').length;
+  const connectedCount = [jira.status, google.status, outlook.status, weather.status, rss.status, github.status, slack.status, teams.status, notion.status, linear.status].filter((s) => s === 'connected').length;
 
   async function exportDiagnostics() {
     const result = await window.frontDesk.exportDiagnostics();
@@ -79,7 +80,7 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
 
     <section><h3>Setup wizard</h3><p className="intro">Reopen the guided setup to revisit your first-run choices from the start.</p><div className="actions"><button onClick={() => void onReopenWizard()}>Reopen setup wizard</button></div></section>
 
-    <section><h3>Connect a service</h3><p className="intro">Every option explains what it can read and what you need before it can connect. Browsing this list never contacts anyone.</p><ServiceCatalogGrid catalog={catalog} jira={jira} google={google} outlook={outlook} github={github} slack={slack} teams={teams} notion={notion} dismissedNotices={profile.dismissedNotices} onDismissNotice={onDismissNotice}/></section>
+    <section><h3>Connect a service</h3><p className="intro">Every option explains what it can read and what you need before it can connect. Browsing this list never contacts anyone.</p><ServiceCatalogGrid catalog={catalog} jira={jira} google={google} outlook={outlook} github={github} slack={slack} teams={teams} notion={notion} linear={linear} dismissedNotices={profile.dismissedNotices} onDismissNotice={onDismissNotice}/></section>
 
     <section><h3>Jira connection</h3><p className="intro">Status: {jira.status === 'connected' ? `Connected to ${jira.config?.siteUrl}` : jira.status === 'error' ? `Error — ${jira.lastError}` : 'Not connected'}</p>{jira.status === 'connected' && <div className="actions"><button onClick={() => void onDisconnectJira()}>Disconnect & delete cached tickets</button></div>}</section>
 
@@ -90,6 +91,8 @@ export function Settings({ profile, catalog, jira, google, outlook, weather, rss
     <section><h3>Teams connection</h3><p className="intro">Status: {teams.status === 'connected' ? 'Connected' : teams.status === 'error' ? `Error — ${teams.lastError}` : 'Not connected'}</p>{teams.status === 'connected' && <div className="actions"><button onClick={() => void onDisconnectTeams()}>Disconnect & delete cached data</button></div>}</section>
 
     <section><h3>Notion connection</h3><p className="intro">Status: {notion.status === 'connected' ? `Connected to ${notion.config?.workspace}` : notion.status === 'error' ? `Error — ${notion.lastError}` : 'Not connected'}</p>{notion.status === 'connected' && <div className="actions"><button onClick={() => void onDisconnectNotion()}>Disconnect & delete cached data</button></div>}</section>
+
+    <section><h3>Linear connection</h3><p className="intro">Status: {linear.status === 'connected' ? `Connected as ${linear.config?.name}` : linear.status === 'error' ? `Error — ${linear.lastError}` : 'Not connected'}</p>{linear.status === 'connected' && <div className="actions"><button onClick={() => void onDisconnectLinear()}>Disconnect & delete cached data</button></div>}</section>
 
     <section><h3>Google connection</h3><p className="intro">Status: {google.status === 'connected' ? 'Connected' : google.status === 'error' ? `Error — ${google.lastError}` : 'Not connected'}</p>{google.status === 'connected' && <div className="actions"><button onClick={() => void onDisconnectGoogle()}>Disconnect & delete cached data</button></div>}</section>
 

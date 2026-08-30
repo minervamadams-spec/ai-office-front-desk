@@ -5,8 +5,8 @@ import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { updateElectronApp } from 'update-electron-app';
 import {
-  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput, TeamsConnectInput, NotionConnectInput,
-  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState, defaultNotionState, ChromeProfileInfo
+  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput, TeamsConnectInput, NotionConnectInput, LinearConnectInput,
+  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState, defaultNotionState, defaultLinearState, ChromeProfileInfo
 } from '../shared/contracts';
 import { ProfileRepository, sanitizeDesign } from './profile-repository';
 import { ConnectorStateRepository } from './connector-state-repository';
@@ -20,6 +20,7 @@ import { testGitHubConnection, syncGitHubItems, parseRepoList } from './adapters
 import { testSlackConnection, syncSlackItems, parseChannelList } from './adapters/slack-adapter';
 import { connectTeams, syncTeams } from './adapters/teams-adapter';
 import { testNotionConnection, syncNotionItems } from './adapters/notion-adapter';
+import { testLinearConnection, syncLinearItems } from './adapters/linear-adapter';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -407,6 +408,33 @@ app.whenReady().then(() => {
     return connectorStates.read('notion', defaultNotionState);
   });
 
+  ipcMain.handle('connector:linear:state', () => connectorStates.read('linear', defaultLinearState));
+  ipcMain.handle('connector:linear:test', async (_event, input: LinearConnectInput) => testLinearConnection(input.token));
+  ipcMain.handle('connector:linear:connect', async (_event, input: LinearConnectInput) => {
+    const result = await testLinearConnection(input.token);
+    if (!result.ok || !result.value) {
+      connectorStates.write('linear', { status: 'error', config: null, lastSyncedAt: null, lastError: result.error ?? 'Connection failed.', items: [] }, null);
+      return connectorStates.read('linear', defaultLinearState);
+    }
+    const secretRef = secrets.store(input.token);
+    connectorStates.write('linear', { status: 'connected', config: { name: result.value.name }, lastSyncedAt: null, lastError: null, items: [] }, secretRef);
+    return syncLinearNow(result.value.name, input.token);
+  });
+  ipcMain.handle('connector:linear:sync', async () => {
+    const state = connectorStates.read('linear', defaultLinearState);
+    const secretRef = connectorStates.readSecretRef('linear');
+    if (state.status !== 'connected' || !state.config || !secretRef) return state;
+    const token = secrets.read(secretRef);
+    if (!token) return state;
+    return syncLinearNow(state.config.name, token);
+  });
+  ipcMain.handle('connector:linear:disconnect', () => {
+    const secretRef = connectorStates.readSecretRef('linear');
+    if (secretRef) secrets.delete(secretRef);
+    connectorStates.clear('linear');
+    return connectorStates.read('linear', defaultLinearState);
+  });
+
   ipcMain.handle('connector:google:state', () => connectorStates.read('google', defaultGoogleState));
   ipcMain.handle('connector:google:connect', async (_event, input: GoogleConnectInput) => {
     const result = await connectGoogle(input);
@@ -538,6 +566,7 @@ app.whenReady().then(() => {
     const slack = connectorStates.read('slack', defaultSlackState);
     const teams = connectorStates.read('teams', defaultTeamsState);
     const notion = connectorStates.read('notion', defaultNotionState);
+    const linear = connectorStates.read('linear', defaultLinearState);
     const redacted = {
       exportedAt: new Date().toISOString(),
       connectors: [
@@ -549,7 +578,8 @@ app.whenReady().then(() => {
         { id: 'github', status: github.status, lastSyncedAt: github.lastSyncedAt, lastError: github.lastError, itemCount: github.items.length },
         { id: 'slack', status: slack.status, lastSyncedAt: slack.lastSyncedAt, lastError: slack.lastError, itemCount: slack.items.length },
         { id: 'teams', status: teams.status, lastSyncedAt: teams.lastSyncedAt, lastError: teams.lastError, itemCount: teams.items.length },
-        { id: 'notion', status: notion.status, lastSyncedAt: notion.lastSyncedAt, lastError: notion.lastError, itemCount: notion.items.length }
+        { id: 'notion', status: notion.status, lastSyncedAt: notion.lastSyncedAt, lastError: notion.lastError, itemCount: notion.items.length },
+        { id: 'linear', status: linear.status, lastSyncedAt: linear.lastSyncedAt, lastError: linear.lastError, itemCount: linear.items.length }
       ]
     };
     const target = await dialog.showSaveDialog({ defaultPath: 'front-desk-diagnostics.json' });
@@ -638,6 +668,17 @@ async function syncNotionNow(workspace: string, token: string) {
     connectorStates.write('notion', { status: 'connected', config: { workspace }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
   }
   return connectorStates.read('notion', defaultNotionState);
+}
+
+async function syncLinearNow(name: string, token: string) {
+  const result = await syncLinearItems(token);
+  const secretRef = connectorStates.readSecretRef('linear');
+  if (!result.ok) {
+    connectorStates.write('linear', { status: 'error', config: { name }, lastSyncedAt: null, lastError: result.error ?? 'Sync failed.', items: [] }, secretRef);
+  } else {
+    connectorStates.write('linear', { status: 'connected', config: { name }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
+  }
+  return connectorStates.read('linear', defaultLinearState);
 }
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

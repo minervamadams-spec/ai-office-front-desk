@@ -188,6 +188,30 @@ export const defaultNotionState: NotionState = {
   id: 'notion', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
 };
 
+export interface LinearItem {
+  key: string;
+  title: string;
+  state: string;
+  url: string;
+}
+
+export interface LinearConnectInput {
+  token: string;
+}
+
+export interface LinearState {
+  id: 'linear';
+  status: ConnectionStatus;
+  config: { name: string } | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  items: LinearItem[];
+}
+
+export const defaultLinearState: LinearState = {
+  id: 'linear', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
+};
+
 export const defaultJiraState: ConnectorState = {
   id: 'jira', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, tickets: []
 };
@@ -371,8 +395,8 @@ export const connectorCatalog: ConnectorManifest[] = [
   { id: 'miro', name: 'Miro', status: 'planned', summary: 'Potential Miro board activity card.', auth: 'Installer-owned OAuth app', reads: 'No data is read', permissions: [], adminApproval: false, apiToken: false, setupTime: 'Not available yet', officialSetupUrl: 'https://developers.miro.com/docs/getting-started-with-oauth', retention: 'No data is collected until an adapter is approved.', notReadyReason: secretBrokerReason },
   { id: 'slack', name: 'Slack', status: 'available', summary: 'Recent message previews from the public channels you list.', auth: 'Installer-supplied Bot User OAuth Token from a Slack app you create in your own workspace', reads: 'Channel name, message author, a short text preview, and a link — from the channels you specify', permissions: ['channels:history', 'channels:read'], adminApproval: false, apiToken: true, setupTime: '10–15 minutes', officialSetupUrl: 'https://api.slack.com/authentication/basics', retention: 'Only selected fields; disconnect clears the cache.' },
   { id: 'notion', name: 'Notion', status: 'available', summary: 'Recently edited pages you\'ve shared with your own Notion integration.', auth: 'Installer-supplied internal integration secret from your own Notion workspace — no OAuth handshake needed', reads: 'Page title, last-edited time, and URL — only for pages you share with the integration', permissions: ['Read content'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://developers.notion.com/docs/authorization', retention: 'Only selected fields; disconnect clears the cache.' },
+  { id: 'linear', name: 'Linear', status: 'available', summary: 'Issues currently assigned to you.', auth: 'Installer-supplied Linear personal API key', reads: 'Issue identifier, title, state, and URL', permissions: ['Read-only adapter'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://linear.app/developers/api#personal-api-keys', retention: 'Only selected fields; disconnect clears the cache.' },
   ...([
-    ['Linear', 'issues'],
     ['Asana', 'tasks'],
     ['Trello', 'board activity']
   ] as const).map(([name, what]) => ({ id: name.toLowerCase(), name, status: 'planned' as const, summary: `Potential ${name} ${what} card.`, auth: 'To be determined', reads: 'No data is read', permissions: [], adminApproval: false, apiToken: false, setupTime: 'Not available yet', retention: 'No data is collected until an adapter is approved.', notReadyReason: noAdapterReason }))

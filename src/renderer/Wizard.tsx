@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, GitHubState, SlackState, TeamsState, NotionState } from '../shared/contracts';
+import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, GitHubState, SlackState, TeamsState, NotionState, LinearState } from '../shared/contracts';
 import { LayoutEditor } from './LayoutEditor';
 import { ServiceCatalogGrid } from './ServiceCatalogGrid';
 
@@ -12,7 +12,7 @@ function ProfileFields({ profile, onUpdateProfile }: { profile: DeskProfile; onU
   </>;
 }
 
-export function Wizard({ profile, catalog, jira, google, outlook, github, slack, teams, notion, onUpdateProfile, onUpdateDesign, onFinish, onDismissNotice }: {
+export function Wizard({ profile, catalog, jira, google, outlook, github, slack, teams, notion, linear, onUpdateProfile, onUpdateDesign, onFinish, onDismissNotice }: {
   profile: DeskProfile;
   catalog: ConnectorManifest[];
   jira: ConnectorState;
@@ -22,6 +22,7 @@ export function Wizard({ profile, catalog, jira, google, outlook, github, slack,
   slack: SlackState;
   teams: TeamsState;
   notion: NotionState;
+  linear: LinearState;
   onUpdateProfile: (patch: Partial<DeskProfile>) => Promise<void>;
   onUpdateDesign: (patch: Partial<DeskProfile['design']>) => Promise<void>;
   onFinish: () => Promise<void>;
@@ -50,7 +51,7 @@ export function Wizard({ profile, catalog, jira, google, outlook, github, slack,
       {step === 2 && <>
         <p className="eyebrow">CONNECTIONS</p>
         <h2>Connect only what you use.</h2>
-        <ServiceCatalogGrid catalog={catalog} jira={jira} google={google} outlook={outlook} github={github} slack={slack} teams={teams} notion={notion} dismissedNotices={profile.dismissedNotices} onDismissNotice={onDismissNotice} showSearch={false}/>
+        <ServiceCatalogGrid catalog={catalog} jira={jira} google={google} outlook={outlook} github={github} slack={slack} teams={teams} notion={notion} linear={linear} dismissedNotices={profile.dismissedNotices} onDismissNotice={onDismissNotice} showSearch={false}/>
         <div className="actions"><button onClick={() => void go(1)}>Back</button><button className="primary" onClick={() => void go(3)}>Next</button><button onClick={() => void go(3)}>Skip for now</button></div>
       </>}
       {step === 3 && <>
