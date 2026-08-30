@@ -43,11 +43,10 @@ Trello account, or Microsoft account) at any time, independent of this app.
 **Original built-in desk:** Settings → "Delete local app data" permanently removes this app's
 profile, connector settings, cached display data, and encrypted secrets.
 
-**Generic dashboard:** there is no in-app delete button for this yet. Quit the app and delete its
-data folder yourself: `~/Library/Application Support/ai-office-front-desk/dashboard-instance` on
-macOS (or the equivalent app-data location on Windows). This does not affect any other application
-on your computer, including the separate browser-based Portfolio Dashboard this dashboard's code
-is based on.
+**Generic dashboard:** Desk settings → "Delete local app data" (under "Danger zone") wipes this
+instance's own config, cached display data, and connector credentials, then returns you to the
+first-run wizard. This does not affect any other application on your computer, including the
+separate browser-based Portfolio Dashboard this dashboard's code is based on.
 
 ## Changes to this policy
 

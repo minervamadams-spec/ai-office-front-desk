@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **"Delete local app data" for the generic dashboard** — Desk settings → "Danger zone". Wipes this
+  install's own config, cached data, and connector credentials, then returns you to the first-run
+  wizard. Closes the gap the previous release's privacy docs flagged as missing.
+
 ## 0.13.0 — 2026-08-30 (unsigned)
 
 ### Added
