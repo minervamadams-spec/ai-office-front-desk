@@ -3,10 +3,12 @@ import type {
   ConnectorState, ConnectorManifest, DeskDesign, DeskProfile, JiraConnectInput,
   GoogleState, GoogleConnectInput, OutlookState, OutlookConnectInput,
   WeatherState, WeatherConnectInput, RssState, RssConnectInput, ChromeProfileInfo,
-  GitHubState, GitHubConnectInput, SlackState, SlackConnectInput, TeamsState, TeamsConnectInput
+  GitHubState, GitHubConnectInput, SlackState, SlackConnectInput, TeamsState, TeamsConnectInput,
+  NotionState, NotionConnectInput
 } from '../shared/contracts';
 import type { AdapterResult as GitHubAdapterResult } from '../main/adapters/github-adapter';
 import type { AdapterResult as SlackAdapterResult } from '../main/adapters/slack-adapter';
+import type { AdapterResult as NotionAdapterResult } from '../main/adapters/notion-adapter';
 import type { AdapterResult } from '../main/adapters/jira-adapter';
 
 const api = {
@@ -52,6 +54,13 @@ const api = {
     connect: (input: TeamsConnectInput): Promise<TeamsState> => ipcRenderer.invoke('connector:teams:connect', input),
     sync: (): Promise<TeamsState> => ipcRenderer.invoke('connector:teams:sync'),
     disconnect: (): Promise<TeamsState> => ipcRenderer.invoke('connector:teams:disconnect')
+  },
+  notion: {
+    state: (): Promise<NotionState> => ipcRenderer.invoke('connector:notion:state'),
+    test: (input: NotionConnectInput): Promise<NotionAdapterResult<{ workspace: string }>> => ipcRenderer.invoke('connector:notion:test', input),
+    connect: (input: NotionConnectInput): Promise<NotionState> => ipcRenderer.invoke('connector:notion:connect', input),
+    sync: (): Promise<NotionState> => ipcRenderer.invoke('connector:notion:sync'),
+    disconnect: (): Promise<NotionState> => ipcRenderer.invoke('connector:notion:disconnect')
   },
   google: {
     state: (): Promise<GoogleState> => ipcRenderer.invoke('connector:google:state'),

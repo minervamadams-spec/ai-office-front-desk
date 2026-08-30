@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, RoutineItem, AffirmationItem, QuickLaunchItem, WeatherState, RssState, GitHubState, SlackState, TeamsState } from '../shared/contracts';
-import { defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState } from '../shared/contracts';
+import type { ConnectorManifest, ConnectorState, DeskProfile, GoogleState, OutlookState, RoutineItem, AffirmationItem, QuickLaunchItem, WeatherState, RssState, GitHubState, SlackState, TeamsState, NotionState } from '../shared/contracts';
+import { defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState, defaultNotionState } from '../shared/contracts';
 import { Wizard } from './Wizard';
 import { Dashboard } from './Dashboard';
 import { Settings } from './Settings';
@@ -16,6 +16,7 @@ export function App() {
   const [github, setGitHub] = useState<GitHubState>(defaultGitHubState);
   const [slack, setSlack] = useState<SlackState>(defaultSlackState);
   const [teams, setTeams] = useState<TeamsState>(defaultTeamsState);
+  const [notion, setNotion] = useState<NotionState>(defaultNotionState);
   const [secure, setSecure] = useState<boolean | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -25,10 +26,10 @@ export function App() {
     void Promise.all([
       window.frontDesk.readProfile(), window.frontDesk.listCatalog(),
       window.frontDesk.jira.state(), window.frontDesk.google.state(), window.frontDesk.outlook.state(),
-      window.frontDesk.weather.state(), window.frontDesk.rss.state(), window.frontDesk.github.state(), window.frontDesk.slack.state(), window.frontDesk.teams.state()
-    ]).then(([savedProfile, services, jiraState, googleState, outlookState, weatherState, rssState, githubState, slackState, teamsState]) => {
+      window.frontDesk.weather.state(), window.frontDesk.rss.state(), window.frontDesk.github.state(), window.frontDesk.slack.state(), window.frontDesk.teams.state(), window.frontDesk.notion.state()
+    ]).then(([savedProfile, services, jiraState, googleState, outlookState, weatherState, rssState, githubState, slackState, teamsState, notionState]) => {
       setProfile(savedProfile); setCatalog(services); setJira(jiraState); setGoogle(googleState); setOutlook(outlookState);
-      setWeather(weatherState); setRss(rssState); setGitHub(githubState); setSlack(slackState); setTeams(teamsState);
+      setWeather(weatherState); setRss(rssState); setGitHub(githubState); setSlack(slackState); setTeams(teamsState); setNotion(notionState);
     });
     window.frontDesk.isSecureStorageAvailable().then(setSecure).catch(() => setSecure(false));
   }, []);
@@ -54,10 +55,12 @@ export function App() {
   async function disconnectSlack() { setSlack(await window.frontDesk.slack.disconnect()); }
   async function syncTeams() { setTeams(await window.frontDesk.teams.sync()); }
   async function disconnectTeams() { setTeams(await window.frontDesk.teams.disconnect()); }
+  async function syncNotion() { setNotion(await window.frontDesk.notion.sync()); }
+  async function disconnectNotion() { setNotion(await window.frontDesk.notion.disconnect()); }
   async function deleteAllData() {
     setProfile(await window.frontDesk.deleteAllData());
     setJira(defaultJiraState); setGoogle(defaultGoogleState); setOutlook(defaultOutlookState);
-    setWeather(defaultWeatherState); setRss(defaultRssState); setGitHub(defaultGitHubState); setSlack(defaultSlackState); setTeams(defaultTeamsState);
+    setWeather(defaultWeatherState); setRss(defaultRssState); setGitHub(defaultGitHubState); setSlack(defaultSlackState); setTeams(defaultTeamsState); setNotion(defaultNotionState);
     setShowSettings(false);
   }
   function dismissNotice(id: string) { void updateProfile({ dismissedNotices: [...currentProfile.dismissedNotices, id] }); }
@@ -81,13 +84,14 @@ export function App() {
       rss.status === 'connected' ? syncRss() : Promise.resolve(),
       github.status === 'connected' ? syncGitHub() : Promise.resolve(),
       slack.status === 'connected' ? syncSlack() : Promise.resolve(),
-      teams.status === 'connected' ? syncTeams() : Promise.resolve()
+      teams.status === 'connected' ? syncTeams() : Promise.resolve(),
+      notion.status === 'connected' ? syncNotion() : Promise.resolve()
     ]);
   }
 
   if (!profile.onboardingComplete) {
     return <main className={`desk accent-${profile.design.accent} density-${profile.design.density}`}>
-      <Wizard profile={profile} catalog={catalog} jira={jira} google={google} outlook={outlook} github={github} slack={slack} teams={teams} onUpdateProfile={updateProfile} onUpdateDesign={updateDesign} onFinish={() => updateProfile({ onboardingComplete: true })} onDismissNotice={dismissNotice}/>
+      <Wizard profile={profile} catalog={catalog} jira={jira} google={google} outlook={outlook} github={github} slack={slack} teams={teams} notion={notion} onUpdateProfile={updateProfile} onUpdateDesign={updateDesign} onFinish={() => updateProfile({ onboardingComplete: true })} onDismissNotice={dismissNotice}/>
     </main>;
   }
 
@@ -97,7 +101,7 @@ export function App() {
         <div className="security"><i className={secure ? 'good' : 'warning'} />{secure ? 'Secure storage available' : 'Secure storage needs attention'}</div>
       </div>
     </header>
-    <Dashboard profile={profile} jira={jira} google={google} outlook={outlook} weather={weather} rss={rss} github={github} slack={slack} teams={teams}
+    <Dashboard profile={profile} jira={jira} google={google} outlook={outlook} weather={weather} rss={rss} github={github} slack={slack} teams={teams} notion={notion}
       onSyncJira={syncJira} onDisconnectJira={disconnectJira}
       onSyncGoogle={syncGoogle} onDisconnectGoogle={disconnectGoogle}
       onSyncOutlook={syncOutlook} onDisconnectOutlook={disconnectOutlook}
@@ -106,14 +110,15 @@ export function App() {
       onSyncGitHub={syncGitHub} onDisconnectGitHub={disconnectGitHub}
       onSyncSlack={syncSlack} onDisconnectSlack={disconnectSlack}
       onSyncTeams={syncTeams} onDisconnectTeams={disconnectTeams}
+      onSyncNotion={syncNotion} onDisconnectNotion={disconnectNotion}
       onOpenSettings={() => setShowSettings(true)} onUpdateDesign={updateDesign}
       onUpdateFocusText={updateFocusText} onUpdateProjectItems={updateProjectItems} onUpdateNoteItems={updateNoteItems}
       onUpdateRoutines={updateRoutines} onUpdateAffirmations={updateAffirmations} onUpdateQuickLaunch={updateQuickLaunch}/>
-    {showSettings && <Settings profile={profile} catalog={catalog} jira={jira} google={google} outlook={outlook} weather={weather} rss={rss} github={github} slack={slack} teams={teams} onUpdateDesign={updateDesign}
+    {showSettings && <Settings profile={profile} catalog={catalog} jira={jira} google={google} outlook={outlook} weather={weather} rss={rss} github={github} slack={slack} teams={teams} notion={notion} onUpdateDesign={updateDesign}
       onUpdateQuickLaunch={updateQuickLaunch}
       onReopenWizard={() => updateProfile({ onboardingComplete: false })}
       onDisconnectJira={disconnectJira} onDisconnectGoogle={disconnectGoogle} onDisconnectOutlook={disconnectOutlook}
-      onDisconnectWeather={disconnectWeather} onDisconnectRss={disconnectRss} onDisconnectGitHub={disconnectGitHub} onDisconnectSlack={disconnectSlack} onDisconnectTeams={disconnectTeams}
+      onDisconnectWeather={disconnectWeather} onDisconnectRss={disconnectRss} onDisconnectGitHub={disconnectGitHub} onDisconnectSlack={disconnectSlack} onDisconnectTeams={disconnectTeams} onDisconnectNotion={disconnectNotion}
       onImportLayout={importLayout} onDismissNotice={dismissNotice} onSyncAll={syncAllConnected}
       onDeleteAll={deleteAllData} onClose={() => setShowSettings(false)}/>}
   </main>;

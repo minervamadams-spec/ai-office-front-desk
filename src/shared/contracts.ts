@@ -164,6 +164,30 @@ export const defaultSlackState: SlackState = {
   id: 'slack', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
 };
 
+export interface NotionItem {
+  id: string;
+  title: string;
+  lastEditedAt: string;
+  url: string;
+}
+
+export interface NotionConnectInput {
+  token: string;
+}
+
+export interface NotionState {
+  id: 'notion';
+  status: ConnectionStatus;
+  config: { workspace: string } | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  items: NotionItem[];
+}
+
+export const defaultNotionState: NotionState = {
+  id: 'notion', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
+};
+
 export const defaultJiraState: ConnectorState = {
   id: 'jira', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, tickets: []
 };
@@ -346,8 +370,8 @@ export const connectorCatalog: ConnectorManifest[] = [
   { id: 'github', name: 'GitHub', status: 'available', summary: 'Open issues and pull requests from the repositories you list.', auth: 'Installer-supplied fine-grained personal access token', reads: 'Issue and pull request title, state, and URL from the repos you specify', permissions: ['Issues: Read-only', 'Pull requests: Read-only'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens', retention: 'Only selected fields; disconnect clears the cache.' },
   { id: 'miro', name: 'Miro', status: 'planned', summary: 'Potential Miro board activity card.', auth: 'Installer-owned OAuth app', reads: 'No data is read', permissions: [], adminApproval: false, apiToken: false, setupTime: 'Not available yet', officialSetupUrl: 'https://developers.miro.com/docs/getting-started-with-oauth', retention: 'No data is collected until an adapter is approved.', notReadyReason: secretBrokerReason },
   { id: 'slack', name: 'Slack', status: 'available', summary: 'Recent message previews from the public channels you list.', auth: 'Installer-supplied Bot User OAuth Token from a Slack app you create in your own workspace', reads: 'Channel name, message author, a short text preview, and a link — from the channels you specify', permissions: ['channels:history', 'channels:read'], adminApproval: false, apiToken: true, setupTime: '10–15 minutes', officialSetupUrl: 'https://api.slack.com/authentication/basics', retention: 'Only selected fields; disconnect clears the cache.' },
+  { id: 'notion', name: 'Notion', status: 'available', summary: 'Recently edited pages you\'ve shared with your own Notion integration.', auth: 'Installer-supplied internal integration secret from your own Notion workspace — no OAuth handshake needed', reads: 'Page title, last-edited time, and URL — only for pages you share with the integration', permissions: ['Read content'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://developers.notion.com/docs/authorization', retention: 'Only selected fields; disconnect clears the cache.' },
   ...([
-    ['Notion', 'recent pages'],
     ['Linear', 'issues'],
     ['Asana', 'tasks'],
     ['Trello', 'board activity']

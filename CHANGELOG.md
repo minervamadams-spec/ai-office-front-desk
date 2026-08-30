@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **Notion is now a real, working connector** — the fourth one. Even simpler than the others: an
+  internal integration secret from your own Notion workspace, no OAuth handshake at all. Open each
+  page you want tracked in Notion and share it with your integration ("…" → Connections); the app
+  shows recently-edited pages among whatever's been shared, with title, last-edited time, and a link.
+
 ## 0.7.0 — 2026-08-30 (unsigned)
 
 ### Added

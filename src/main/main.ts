@@ -5,8 +5,8 @@ import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { updateElectronApp } from 'update-electron-app';
 import {
-  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput, TeamsConnectInput,
-  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState, ChromeProfileInfo
+  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput, TeamsConnectInput, NotionConnectInput,
+  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, defaultTeamsState, defaultNotionState, ChromeProfileInfo
 } from '../shared/contracts';
 import { ProfileRepository, sanitizeDesign } from './profile-repository';
 import { ConnectorStateRepository } from './connector-state-repository';
@@ -19,6 +19,7 @@ import { connectRss, syncRss } from './adapters/rss-adapter';
 import { testGitHubConnection, syncGitHubItems, parseRepoList } from './adapters/github-adapter';
 import { testSlackConnection, syncSlackItems, parseChannelList } from './adapters/slack-adapter';
 import { connectTeams, syncTeams } from './adapters/teams-adapter';
+import { testNotionConnection, syncNotionItems } from './adapters/notion-adapter';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -379,6 +380,33 @@ app.whenReady().then(() => {
     return connectorStates.read('teams', defaultTeamsState);
   });
 
+  ipcMain.handle('connector:notion:state', () => connectorStates.read('notion', defaultNotionState));
+  ipcMain.handle('connector:notion:test', async (_event, input: NotionConnectInput) => testNotionConnection(input.token));
+  ipcMain.handle('connector:notion:connect', async (_event, input: NotionConnectInput) => {
+    const result = await testNotionConnection(input.token);
+    if (!result.ok || !result.value) {
+      connectorStates.write('notion', { status: 'error', config: null, lastSyncedAt: null, lastError: result.error ?? 'Connection failed.', items: [] }, null);
+      return connectorStates.read('notion', defaultNotionState);
+    }
+    const secretRef = secrets.store(input.token);
+    connectorStates.write('notion', { status: 'connected', config: { workspace: result.value.workspace }, lastSyncedAt: null, lastError: null, items: [] }, secretRef);
+    return syncNotionNow(result.value.workspace, input.token);
+  });
+  ipcMain.handle('connector:notion:sync', async () => {
+    const state = connectorStates.read('notion', defaultNotionState);
+    const secretRef = connectorStates.readSecretRef('notion');
+    if (state.status !== 'connected' || !state.config || !secretRef) return state;
+    const token = secrets.read(secretRef);
+    if (!token) return state;
+    return syncNotionNow(state.config.workspace, token);
+  });
+  ipcMain.handle('connector:notion:disconnect', () => {
+    const secretRef = connectorStates.readSecretRef('notion');
+    if (secretRef) secrets.delete(secretRef);
+    connectorStates.clear('notion');
+    return connectorStates.read('notion', defaultNotionState);
+  });
+
   ipcMain.handle('connector:google:state', () => connectorStates.read('google', defaultGoogleState));
   ipcMain.handle('connector:google:connect', async (_event, input: GoogleConnectInput) => {
     const result = await connectGoogle(input);
@@ -509,6 +537,7 @@ app.whenReady().then(() => {
     const github = connectorStates.read('github', defaultGitHubState);
     const slack = connectorStates.read('slack', defaultSlackState);
     const teams = connectorStates.read('teams', defaultTeamsState);
+    const notion = connectorStates.read('notion', defaultNotionState);
     const redacted = {
       exportedAt: new Date().toISOString(),
       connectors: [
@@ -519,7 +548,8 @@ app.whenReady().then(() => {
         { id: 'rss', status: rss.status, lastSyncedAt: rss.lastSyncedAt, lastError: rss.lastError, itemCount: rss.items.length },
         { id: 'github', status: github.status, lastSyncedAt: github.lastSyncedAt, lastError: github.lastError, itemCount: github.items.length },
         { id: 'slack', status: slack.status, lastSyncedAt: slack.lastSyncedAt, lastError: slack.lastError, itemCount: slack.items.length },
-        { id: 'teams', status: teams.status, lastSyncedAt: teams.lastSyncedAt, lastError: teams.lastError, itemCount: teams.items.length }
+        { id: 'teams', status: teams.status, lastSyncedAt: teams.lastSyncedAt, lastError: teams.lastError, itemCount: teams.items.length },
+        { id: 'notion', status: notion.status, lastSyncedAt: notion.lastSyncedAt, lastError: notion.lastError, itemCount: notion.items.length }
       ]
     };
     const target = await dialog.showSaveDialog({ defaultPath: 'front-desk-diagnostics.json' });
@@ -597,6 +627,17 @@ async function syncSlackNow(team: string, channels: string[], token: string) {
     connectorStates.write('slack', { status: 'connected', config: { team, channels }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
   }
   return connectorStates.read('slack', defaultSlackState);
+}
+
+async function syncNotionNow(workspace: string, token: string) {
+  const result = await syncNotionItems(token);
+  const secretRef = connectorStates.readSecretRef('notion');
+  if (!result.ok) {
+    connectorStates.write('notion', { status: 'error', config: { workspace }, lastSyncedAt: null, lastError: result.error ?? 'Sync failed.', items: [] }, secretRef);
+  } else {
+    connectorStates.write('notion', { status: 'connected', config: { workspace }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
+  }
+  return connectorStates.read('notion', defaultNotionState);
 }
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
