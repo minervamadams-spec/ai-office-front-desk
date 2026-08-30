@@ -11,14 +11,17 @@ placeholders to fill in before a real release.
 
 ## Installing (end users)
 
-There's no hosted download yet — build the installer yourself (see below), then hand someone
-either the `.dmg` or the zip (`out/make/zip/darwin/arm64/*.zip` — it includes a plain-text
-`README.txt` alongside the app, written for a non-technical installer, not a developer). Either
-way:
+Grab the build matching the installer's Mac from the
+[GitHub releases page](https://github.com/minervamadams-spec/ai-office-front-desk/releases) (Apple
+menu → About This Mac tells you which chip), or build it yourself (see below) — either the `.dmg`
+or the zip (it includes a plain-text `README.txt` alongside the app, written for a non-technical
+installer, not a developer). Note that `npm run make`/`package` only builds for the *host*
+machine's own architecture by default — use `make:all`/`publish:all` (see "Auto-updates" below) to
+produce both.
 
-- **macOS 10.15 (Catalina) or later**: open the `.dmg` (or unzip the zip) and drag the app into
-  `Applications`. (Pinned to Electron 32 specifically for this — Electron 33+ raised its own
-  minimum to macOS 11/Big Sur.)
+- **macOS 10.15 (Catalina) or later, Apple Silicon or Intel**: open the `.dmg` (or unzip the zip)
+  and drag the app into `Applications`. (Pinned to Electron 32 specifically for the OS floor —
+  Electron 33+ raised its own minimum to macOS 11/Big Sur.)
 - **Windows**: run the generated Squirrel setup `.exe` from `out/make/squirrel.windows/<arch>/`.
 
 The app is unsigned (no Apple Developer / code-signing certificate configured yet), so macOS
@@ -45,11 +48,14 @@ needs the `.zip` artifact specifically (already configured above) rather than th
 To ship a fix to everyone who already has it installed:
 
 ```bash
-npm run publish   # wraps `electron-forge publish` — builds, then uploads the release artifacts
+npm run publish:all   # builds and publishes BOTH arm64 and x64 to the same GitHub release
+                       # (npm run publish alone only covers this machine's own architecture)
 ```
 
 Bump `version` in `package.json` first — Squirrel only offers an update when the published version
-is newer than what's installed.
+is newer than what's installed. Note the auto-updater itself only fetches a build matching the
+installed machine's own architecture — an Intel install only ever updates to a newer x64 build, so
+skipping the x64 half of a release means Intel installs silently stop receiving updates, not error.
 
 ## Building from source
 

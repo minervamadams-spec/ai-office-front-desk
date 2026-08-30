@@ -57,8 +57,11 @@ const config: ForgeConfig = {
     // Electron runtime needs, and a mismatched build doesn't just fail to load — it *segfaults* the
     // whole process. Rebuilding it for Electron right before every package/make/publish means this
     // is never something that has to be remembered by hand.
-    prePackage: async () => {
-      execFileSync('npx', ['electron-rebuild', '-f', '-w', 'better-sqlite3'], { cwd: __dirname, stdio: 'inherit' });
+    prePackage: async (_config, _platform, arch) => {
+      // Must target the arch actually being packaged (electron-forge make --arch=x64 on this arm64
+      // Mac, for instance) — without -a, this always rebuilds for the host's own arch, silently
+      // producing a package with a native module for the wrong CPU.
+      execFileSync('npx', ['electron-rebuild', '-f', '-w', 'better-sqlite3', '-a', arch], { cwd: __dirname, stdio: 'inherit' });
     },
     // Drops a plain-text README next to the .app in every packaged output directory.
     postPackage: async (_config, { outputPaths }) => {

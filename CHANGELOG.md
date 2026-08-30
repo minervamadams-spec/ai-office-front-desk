@@ -7,6 +7,15 @@
 - **macOS 10.15 (Catalina) couldn't install the app at all** — "You have macOS 10.15.8. The
   application requires macOS 11.0 or later." Electron 36's own minimum target is macOS 11; the app
   is now built on Electron 32, the newest major that still supports 10.15.
+- **The above fix alone still didn't work on an actual Catalina Mac** — every Mac that old is
+  Intel, and only an Apple Silicon (arm64) build had been published. Built and published an Intel
+  (x64) build alongside it (same v0.1.1), verified for real under Rosetta (full UI + all three data
+  stores initializing, not just "the binary is the right architecture"). `forge.config.ts`'s
+  prePackage hook was rebuilding `better-sqlite3` for the *host* machine's architecture regardless
+  of which architecture was actually being packaged — harmless when they matched, silently wrong
+  cross-arch — now passes the real target arch through. Added `make:all`/`publish:all` scripts so
+  future releases cover both architectures by default instead of only whichever one the developer's
+  own Mac happens to be.
 - Switched the storage engine from `node:sqlite` (a Node built-in) to `better-sqlite3`, because
   Electron 32 bundles Node 20.x, which doesn't have `node:sqlite` at all (added in Node 22.5). Same
   SQLite file format underneath — existing installs' data reads back unchanged, verified directly
