@@ -31,10 +31,24 @@ it's a one-time click any installer can do themselves.
 
 No other setup is required from the developer for someone else to install and use this app: it
 runs entirely standalone (sample data, manual lists, and every connector are opt-in from inside
-the app itself). The one exception is the "Personal Dashboard" bridge in `dashboardRoot()` in
-`src/main/main.ts` — that only ever activates on a machine that already has a specific local
-checkout at `~/Projects/GitHub/portfolio-dashboard`; on every other machine it's silently skipped
-and the standalone UI below opens instead, with no dialog or error shown.
+the app itself).
+
+### Which desk am I looking at
+
+The desk shown is one of three things, resolved in `createWindow()` in `src/main/main.ts`:
+
+1. **The developer's own real dashboard** — only ever activates on a machine that already has a
+   specific local checkout at `~/Projects/GitHub/portfolio-dashboard` (`dashboardRoot()`/
+   `ensureDashboardServer()`). Silently skipped everywhere else, with no dialog or error shown.
+2. **A bundled, fully generic snapshot of that same dashboard codebase** — the ordinary case for
+   everyone else. `forge.config.ts`'s `afterCopy` hook packages a copy of that codebase (code and
+   empty-shape templates only — never the developer's real config/data/secrets) into the app at
+   build time; `ensureBundledDashboardServer()` spawns it pointed at its own private folder inside
+   this app's own userData directory, seeded empty with its own first-run wizard and connector
+   catalog. Both (1) and (2) are the same underlying dashboard — just pointed at different data.
+3. **The original built-in renderer below** (`src/renderer/`) — kept only as a last-resort
+   fallback if (2) also fails to start for some reason. Not actively developed against anymore;
+   don't expect parity with (1)/(2) going forward.
 
 ## Auto-updates
 

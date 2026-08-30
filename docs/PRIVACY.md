@@ -23,17 +23,31 @@ Only requests you explicitly triggered, and only to the service you chose to con
 
 ## Credentials
 
-API tokens and OAuth refresh tokens are encrypted using your operating system's own credential
-protection (Keychain on macOS, DPAPI on Windows) before being written to disk, and only an opaque
-reference id — never the token itself — is stored alongside connector status. You can revoke any
-token at its source (e.g., your Atlassian account, Google account, or Microsoft account) at any
-time, independent of this app.
+How your credentials are stored depends on which desk this app is showing you (see the README's
+"Which desk am I looking at" section) — both keep tokens local-only and never transmit them
+anywhere except the service you connected them to, but the storage mechanism differs:
+
+- **The original built-in desk** encrypts API tokens and OAuth refresh tokens using your operating
+  system's own credential protection (Keychain on macOS, DPAPI on Windows) before writing them to
+  disk, storing only an opaque reference id — never the token itself — alongside connector status.
+- **The generic dashboard** (what most installs actually see) stores each connector's credentials
+  as a plain file in this app's own private data folder, readable only by your local user account
+  via normal OS file permissions — not additionally encrypted by the OS keychain. This matches how
+  the dashboard's own developer has always stored her personal connectors' credentials.
+
+Either way, you can revoke any token at its source (e.g., your Atlassian account, Google account,
+Trello account, or Microsoft account) at any time, independent of this app.
 
 ## Deleting your data
 
-Settings → "Delete local app data" permanently removes this app's profile, connector settings,
-cached display data, and encrypted secrets. This does not affect any other application on your
-computer, including the separate browser-based Portfolio Dashboard.
+**Original built-in desk:** Settings → "Delete local app data" permanently removes this app's
+profile, connector settings, cached display data, and encrypted secrets.
+
+**Generic dashboard:** there is no in-app delete button for this yet. Quit the app and delete its
+data folder yourself: `~/Library/Application Support/ai-office-front-desk/dashboard-instance` on
+macOS (or the equivalent app-data location on Windows). This does not affect any other application
+on your computer, including the separate browser-based Portfolio Dashboard this dashboard's code
+is based on.
 
 ## Changes to this policy
 
