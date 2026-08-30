@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.3 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **Google connect failing with an opaque "unexpected error (status 403)"** with no way to tell why.
+  The adapter was discarding Google's actual OAuth error code and mapping on HTTP status alone.
+  Surfaced during a real tester's connect attempt: the token exchange returns a plain OAuth error
+  code (`access_denied`, `invalid_grant`, etc.) — that's a fixed, documented, safe-to-show
+  vocabulary, unlike the rest of the response. Now mapped to specific guidance: `access_denied` →
+  add the account as a Google Cloud test user; a 403 with no matching code → enable the Gmail API
+  and Google Drive API (a separate step from creating the OAuth client, easy to miss and exactly
+  what this tester had missed).
+- The in-app Google connect instructions never mentioned enabling those two APIs or adding test
+  users at all — added both, since this is now confirmed to be a common first-connection snag.
+
 ## 0.1.2 — 2026-08-30 (unsigned)
 
 ### Fixed

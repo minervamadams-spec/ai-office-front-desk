@@ -5,7 +5,7 @@ import type { GoogleConnectInput } from '../src/shared/contracts';
 const input: GoogleConnectInput = { clientId: 'client-id', clientSecret: 'shh' };
 
 function jsonResponse(status: number, body: unknown) {
-  return { ok: status >= 200 && status < 300, status, json: async () => body } as Response;
+  return { ok: status >= 200 && status < 300, status, json: async () => body, text: async () => JSON.stringify(body) } as Response;
 }
 
 describe('syncGoogle', () => {
@@ -14,7 +14,21 @@ describe('syncGoogle', () => {
     const result = await syncGoogle(input, 'refresh-token', fetchImpl as unknown as typeof fetch);
     expect(result.ok).toBe(false);
     expect(result.error).not.toContain('invalid_grant');
-    expect(result.error).toMatch(/client id and secret/i);
+    expect(result.error).toMatch(/expired or was already used/i);
+  });
+
+  it('maps a 403 with no recognizable OAuth error code to an API-enablement hint', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(403, { error: 'something_google_specific_and_new' }));
+    const result = await syncGoogle(input, 'refresh-token', fetchImpl as unknown as typeof fetch);
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/gmail api.*drive api/i);
+  });
+
+  it('maps an access_denied OAuth error to test-user guidance regardless of status code', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(403, { error: 'access_denied' }));
+    const result = await syncGoogle(input, 'refresh-token', fetchImpl as unknown as typeof fetch);
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/test users/i);
   });
 
   it('refreshes the access token then reads inbox unread count and recent Drive files', async () => {

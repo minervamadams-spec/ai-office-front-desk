@@ -22,6 +22,7 @@ export function GoogleConnectForm({ onConnected, dismissedNotices, onDismissNoti
       This app never charges you anything. Gmail and Drive requests made with your sign-in count against your own Google account's own usage limits.
     </Dismissible>
     <p className="intro">Create a Desktop app OAuth client in your Google Cloud project, then paste its client ID and client secret here. Sign-in happens in your system browser — this app never sees your Google password.</p>
+    <p className="intro">Two easy-to-miss steps in that same project, since they're separate from creating the OAuth client itself: under <strong>APIs & Services → Library</strong>, enable both <strong>Gmail API</strong> and <strong>Google Drive API</strong>; and under <strong>OAuth consent screen → Audience</strong>, add every Google account that will use this under <strong>Test users</strong> (skip this only if you've published the app past Google's testing stage).</p>
     <label>Client ID<input value={input.clientId} onChange={(e) => setInput({ ...input, clientId: e.target.value })} placeholder="xxxxx.apps.googleusercontent.com"/></label>
     <label>Client secret<input type="password" value={input.clientSecret} onChange={(e) => setInput({ ...input, clientSecret: e.target.value })} placeholder="Paste the client secret"/></label>
     {status && <p className="form-status">{status}</p>}

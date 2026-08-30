@@ -8,8 +8,30 @@ const SCOPE = 'https://www.googleapis.com/auth/gmail.metadata https://www.google
 
 export type FetchLike = typeof fetch;
 
+/** Google's OAuth error codes (RFC 6749 §5.2 plus Google's own) are a fixed, documented vocabulary —
+ * safe to surface directly, unlike the rest of a response body which can contain request echoes. */
+function mapOAuthErrorCode(code: string): string | null {
+  switch (code) {
+    case 'access_denied': return 'Google denied this request. If the app is still in "Testing" mode in Google Cloud Console, add this Google account under OAuth consent screen → Audience → Test users.';
+    case 'invalid_client': return 'Google did not accept that client ID and secret. Check the Google Cloud OAuth client configuration.';
+    case 'invalid_grant': return 'That sign-in has expired or was already used. Try connecting again from the start.';
+    case 'unauthorized_client':
+    case 'permission_denied':
+      return 'Google rejected this request, most likely because the Gmail API and/or Google Drive API are not enabled for this Google Cloud project — enable both under APIs & Services → Library, then try again.';
+    default: return null;
+  }
+}
+
 function mapError(status: number | null, body?: string): string {
+  if (body) {
+    try {
+      const parsed = JSON.parse(body) as { error?: string };
+      const mapped = typeof parsed.error === 'string' ? mapOAuthErrorCode(parsed.error) : null;
+      if (mapped) return mapped;
+    } catch { /* not JSON, or not shaped like an OAuth error — fall through */ }
+  }
   if (status === 400 || status === 401) return 'Google did not accept that client ID and secret, or the sign-in was denied. Check the Google Cloud OAuth client configuration.';
+  if (status === 403) return 'Google refused this request (403) — most likely the Gmail API and/or Google Drive API are not enabled for this Google Cloud project. Enable both under APIs & Services → Library, then try again.';
   if (status !== null) return `Google responded with an unexpected error (status ${status}).`;
   return body?.match(/network|fetch failed|ENOTFOUND|ECONNREFUSED/i) ? 'Could not reach Google. Check the network connection.' : 'Could not complete the request to Google.';
 }
@@ -47,7 +69,7 @@ export async function connectGoogle(input: GoogleConnectInput, fetchImpl: FetchL
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ client_id: input.clientId, client_secret: input.clientSecret, code, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: pkce.verifier }).toString()
     });
-    if (!tokenResponse.ok) return { ok: false, error: mapError(tokenResponse.status) };
+    if (!tokenResponse.ok) return { ok: false, error: mapError(tokenResponse.status, await tokenResponse.text()) };
     const tokenBody = (await tokenResponse.json()) as { access_token?: string; refresh_token?: string };
     if (!tokenBody.access_token || !tokenBody.refresh_token) return { ok: false, error: 'Google did not return a refresh token. Try disconnecting any prior authorization for this app at myaccount.google.com and connect again.' };
 
@@ -65,7 +87,7 @@ export async function syncGoogle(input: GoogleConnectInput, refreshToken: string
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ client_id: input.clientId, client_secret: input.clientSecret, refresh_token: refreshToken, grant_type: 'refresh_token' }).toString()
     });
-    if (!tokenResponse.ok) return { ok: false, error: mapError(tokenResponse.status) };
+    if (!tokenResponse.ok) return { ok: false, error: mapError(tokenResponse.status, await tokenResponse.text()) };
     const tokenBody = (await tokenResponse.json()) as { access_token?: string };
     if (!tokenBody.access_token) return { ok: false, error: 'Google did not return a fresh access token.' };
     return fetchGoogleData(tokenBody.access_token, fetchImpl);
