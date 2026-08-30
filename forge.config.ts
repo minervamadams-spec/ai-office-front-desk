@@ -41,7 +41,9 @@ const config: ForgeConfig = {
     new MakerDMG({ icon: 'assets/icon.icns', name: 'AI Office Front Desk' }),
     new MakerSquirrel({ name: 'AIOfficeFrontDesk', setupIcon: 'assets/icon.ico' })
   ],
-  publishers: UPDATE_REPO_OWNER ? [new PublisherGithub({ repository: { owner: UPDATE_REPO_OWNER, name: UPDATE_REPO_NAME }, prerelease: false })] : [],
+  // draft: false matters — update.electronjs.org (what update-electron-app checks against) only
+  // serves published releases; a draft release silently never reaches anyone already installed.
+  publishers: UPDATE_REPO_OWNER ? [new PublisherGithub({ repository: { owner: UPDATE_REPO_OWNER, name: UPDATE_REPO_NAME }, prerelease: false, draft: false })] : [],
   hooks: {
     // Drops a plain-text README next to the .app in every packaged output directory.
     postPackage: async (_config, { outputPaths }) => {
