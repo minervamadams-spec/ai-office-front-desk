@@ -1,4 +1,4 @@
-import { GitHubConnectInput, GitHubItem } from '../../shared/contracts';
+import { GitHubItem } from '../../shared/contracts';
 
 export type FetchLike = typeof fetch;
 
@@ -16,7 +16,7 @@ function authHeaders(token: string): Record<string, string> {
 function mapError(status: number | null, cause?: unknown): string {
   if (status === 401) return 'That personal access token was not accepted by GitHub. Confirm it is still active and has not expired.';
   if (status === 403) return 'GitHub rejected that request — the token may be missing the Issues/Pull requests read permission, or a rate limit was hit.';
-  if (status === 404) return 'That GitHub account or resource could not be found.';
+  if (status === 404) return 'That repository could not be found — check the owner/repo spelling, and that the token has access to it.';
   if (status !== null) return `GitHub responded with an unexpected error (status ${status}). Try again in a moment.`;
   if (cause instanceof Error && /network|fetch failed|ENOTFOUND|ECONNREFUSED/i.test(cause.message)) {
     return 'Could not reach GitHub. Check the network connection.';
@@ -24,38 +24,45 @@ function mapError(status: number | null, cause?: unknown): string {
   return 'Could not complete the request to GitHub.';
 }
 
-async function fetchInvolvedItems(login: string, token: string, fetchImpl: FetchLike, perPage: number) {
-  const query = encodeURIComponent(`is:open involves:${login} archived:false`);
-  return fetchImpl(`https://api.github.com/search/issues?q=${query}&per_page=${perPage}&sort=updated`, { headers: authHeaders(token) });
+/** Accepts however the installer typed a list of repos — commas, newlines, or both — and normalizes
+ * to a clean "owner/repo" list. Kept as one plain-text field (like Jira's saved-search field) rather
+ * than a repeatable list of inputs, so adding one more repo is just typing, not a form-management task. */
+export function parseRepoList(raw: string): string[] {
+  return [...new Set(raw.split(/[\n,]/).map((entry) => entry.trim()).filter((entry) => /^[^/\s]+\/[^/\s]+$/.test(entry)))];
 }
 
-export async function testGitHubConnection(input: GitHubConnectInput, fetchImpl: FetchLike = fetch): Promise<AdapterResult<{ login: string }>> {
+export async function testGitHubConnection(token: string, repos: string[], fetchImpl: FetchLike = fetch): Promise<AdapterResult<{ login: string }>> {
+  if (repos.length === 0) return { ok: false, error: 'List at least one repository as owner/repo (e.g. octocat/hello-world).' };
   try {
-    const response = await fetchImpl('https://api.github.com/user', { headers: authHeaders(input.token) });
-    if (!response.ok) return { ok: false, error: mapError(response.status) };
-    const body = (await response.json()) as { login?: string };
-    if (!body.login) return { ok: false, error: 'GitHub did not return an account login for that token.' };
-    return { ok: true, value: { login: body.login } };
+    const userResponse = await fetchImpl('https://api.github.com/user', { headers: authHeaders(token) });
+    if (!userResponse.ok) return { ok: false, error: mapError(userResponse.status) };
+    const user = (await userResponse.json()) as { login?: string };
+    if (!user.login) return { ok: false, error: 'GitHub did not return an account login for that token.' };
+    // Confirm the token can actually see the first listed repo — the fastest way to catch a typo'd
+    // owner/repo or a token scoped to the wrong repos, before saving the connection.
+    const repoResponse = await fetchImpl(`https://api.github.com/repos/${repos[0]}`, { headers: authHeaders(token) });
+    if (!repoResponse.ok) return { ok: false, error: mapError(repoResponse.status) };
+    return { ok: true, value: { login: user.login } };
   } catch (cause) {
     return { ok: false, error: mapError(null, cause) };
   }
 }
 
-export async function syncGitHubItems(login: string, token: string, fetchImpl: FetchLike = fetch): Promise<AdapterResult<GitHubItem[]>> {
+export async function syncGitHubItems(repos: string[], token: string, fetchImpl: FetchLike = fetch): Promise<AdapterResult<GitHubItem[]>> {
   try {
-    const response = await fetchInvolvedItems(login, token, fetchImpl, 20);
-    if (!response.ok) return { ok: false, error: mapError(response.status) };
-    const body = (await response.json()) as { items?: Array<{ title: string; html_url: string; state: string; number: number; repository_url: string; pull_request?: unknown }> };
-    const items: GitHubItem[] = (body.items ?? []).map((item) => {
-      const repoPath = item.repository_url.replace('https://api.github.com/repos/', '');
-      return {
-        key: `${repoPath}#${item.number}`,
+    const items: GitHubItem[] = [];
+    for (const repo of repos) {
+      const response = await fetchImpl(`https://api.github.com/repos/${repo}/issues?state=open&per_page=20`, { headers: authHeaders(token) });
+      if (!response.ok) return { ok: false, error: mapError(response.status) };
+      const body = (await response.json()) as Array<{ title: string; html_url: string; state: string; number: number; pull_request?: unknown }>;
+      items.push(...body.map((item) => ({
+        key: `${repo}#${item.number}`,
         title: item.title,
-        kind: item.pull_request ? 'pull_request' : 'issue',
+        kind: (item.pull_request ? 'pull_request' : 'issue') as GitHubItem['kind'],
         state: item.state,
         url: item.html_url
-      };
-    });
+      })));
+    }
     return { ok: true, value: items };
   } catch (cause) {
     return { ok: false, error: mapError(null, cause) };

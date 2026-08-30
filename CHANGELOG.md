@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.6.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **Slack is now a real, working connector** — the second one, after GitHub. Read-only via a Bot User
+  OAuth Token from a Slack app the installer creates in their own workspace (no OAuth app registration
+  with us, no client secret to embed — the same reason this could be built without the token-broker
+  work Miro still needs). Shows recent message previews (truncated, never the full message) from the
+  public channels you list.
+
+### Changed
+
+- **GitHub's connector is simpler and more explicit** — instead of an opaque "everything you're
+  involved in across all of GitHub" search, it now works off a plain list of repositories you type in
+  (`owner/repo`, one per line or comma-separated), the same shape as Jira's saved-search field and
+  Slack's new channel list. Easier to explain, easier to control, and needs a narrower, repo-scoped
+  token.
+
 ## 0.5.0 — 2026-08-30 (unsigned)
 
 ### Added

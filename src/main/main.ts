@@ -5,8 +5,8 @@ import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { updateElectronApp } from 'update-electron-app';
 import {
-  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput,
-  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, ChromeProfileInfo
+  connectorCatalog, JiraConnectInput, GoogleConnectInput, OutlookConnectInput, WeatherConnectInput, RssConnectInput, GitHubConnectInput, SlackConnectInput,
+  defaultJiraState, defaultGoogleState, defaultOutlookState, defaultWeatherState, defaultRssState, defaultGitHubState, defaultSlackState, ChromeProfileInfo
 } from '../shared/contracts';
 import { ProfileRepository, sanitizeDesign } from './profile-repository';
 import { ConnectorStateRepository } from './connector-state-repository';
@@ -16,7 +16,8 @@ import { connectGoogle, syncGoogle } from './adapters/google-adapter';
 import { connectOutlook, syncOutlook } from './adapters/outlook-adapter';
 import { connectWeather, syncWeather } from './adapters/weather-adapter';
 import { connectRss, syncRss } from './adapters/rss-adapter';
-import { testGitHubConnection, syncGitHubItems } from './adapters/github-adapter';
+import { testGitHubConnection, syncGitHubItems, parseRepoList } from './adapters/github-adapter';
+import { testSlackConnection, syncSlackItems, parseChannelList } from './adapters/slack-adapter';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -290,16 +291,17 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('connector:github:state', () => connectorStates.read('github', defaultGitHubState));
-  ipcMain.handle('connector:github:test', async (_event, input: GitHubConnectInput) => testGitHubConnection(input));
+  ipcMain.handle('connector:github:test', async (_event, input: GitHubConnectInput) => testGitHubConnection(input.token, parseRepoList(input.repos)));
   ipcMain.handle('connector:github:connect', async (_event, input: GitHubConnectInput) => {
-    const result = await testGitHubConnection(input);
+    const repos = parseRepoList(input.repos);
+    const result = await testGitHubConnection(input.token, repos);
     if (!result.ok || !result.value) {
       connectorStates.write('github', { status: 'error', config: null, lastSyncedAt: null, lastError: result.error ?? 'Connection failed.', items: [] }, null);
       return connectorStates.read('github', defaultGitHubState);
     }
     const secretRef = secrets.store(input.token);
-    connectorStates.write('github', { status: 'connected', config: { login: result.value.login }, lastSyncedAt: null, lastError: null, items: [] }, secretRef);
-    return syncGitHubNow(result.value.login, input.token);
+    connectorStates.write('github', { status: 'connected', config: { login: result.value.login, repos }, lastSyncedAt: null, lastError: null, items: [] }, secretRef);
+    return syncGitHubNow(result.value.login, repos, input.token);
   });
   ipcMain.handle('connector:github:sync', async () => {
     const state = connectorStates.read('github', defaultGitHubState);
@@ -307,13 +309,41 @@ app.whenReady().then(() => {
     if (state.status !== 'connected' || !state.config || !secretRef) return state;
     const token = secrets.read(secretRef);
     if (!token) return state;
-    return syncGitHubNow(state.config.login, token);
+    return syncGitHubNow(state.config.login, state.config.repos, token);
   });
   ipcMain.handle('connector:github:disconnect', () => {
     const secretRef = connectorStates.readSecretRef('github');
     if (secretRef) secrets.delete(secretRef);
     connectorStates.clear('github');
     return connectorStates.read('github', defaultGitHubState);
+  });
+
+  ipcMain.handle('connector:slack:state', () => connectorStates.read('slack', defaultSlackState));
+  ipcMain.handle('connector:slack:test', async (_event, input: SlackConnectInput) => testSlackConnection(input.token, parseChannelList(input.channels)));
+  ipcMain.handle('connector:slack:connect', async (_event, input: SlackConnectInput) => {
+    const channels = parseChannelList(input.channels);
+    const result = await testSlackConnection(input.token, channels);
+    if (!result.ok || !result.value) {
+      connectorStates.write('slack', { status: 'error', config: null, lastSyncedAt: null, lastError: result.error ?? 'Connection failed.', items: [] }, null);
+      return connectorStates.read('slack', defaultSlackState);
+    }
+    const secretRef = secrets.store(input.token);
+    connectorStates.write('slack', { status: 'connected', config: { team: result.value.team, channels }, lastSyncedAt: null, lastError: null, items: [] }, secretRef);
+    return syncSlackNow(result.value.team, channels, input.token);
+  });
+  ipcMain.handle('connector:slack:sync', async () => {
+    const state = connectorStates.read('slack', defaultSlackState);
+    const secretRef = connectorStates.readSecretRef('slack');
+    if (state.status !== 'connected' || !state.config || !secretRef) return state;
+    const token = secrets.read(secretRef);
+    if (!token) return state;
+    return syncSlackNow(state.config.team, state.config.channels, token);
+  });
+  ipcMain.handle('connector:slack:disconnect', () => {
+    const secretRef = connectorStates.readSecretRef('slack');
+    if (secretRef) secrets.delete(secretRef);
+    connectorStates.clear('slack');
+    return connectorStates.read('slack', defaultSlackState);
   });
 
   ipcMain.handle('connector:google:state', () => connectorStates.read('google', defaultGoogleState));
@@ -444,6 +474,7 @@ app.whenReady().then(() => {
     const weather = connectorStates.read('weather', defaultWeatherState);
     const rss = connectorStates.read('rss', defaultRssState);
     const github = connectorStates.read('github', defaultGitHubState);
+    const slack = connectorStates.read('slack', defaultSlackState);
     const redacted = {
       exportedAt: new Date().toISOString(),
       connectors: [
@@ -452,7 +483,8 @@ app.whenReady().then(() => {
         { id: 'outlook', status: outlook.status, lastSyncedAt: outlook.lastSyncedAt, lastError: outlook.lastError },
         { id: 'weather', status: weather.status, lastSyncedAt: weather.lastSyncedAt, lastError: weather.lastError },
         { id: 'rss', status: rss.status, lastSyncedAt: rss.lastSyncedAt, lastError: rss.lastError, itemCount: rss.items.length },
-        { id: 'github', status: github.status, lastSyncedAt: github.lastSyncedAt, lastError: github.lastError, itemCount: github.items.length }
+        { id: 'github', status: github.status, lastSyncedAt: github.lastSyncedAt, lastError: github.lastError, itemCount: github.items.length },
+        { id: 'slack', status: slack.status, lastSyncedAt: slack.lastSyncedAt, lastError: slack.lastError, itemCount: slack.items.length }
       ]
     };
     const target = await dialog.showSaveDialog({ defaultPath: 'front-desk-diagnostics.json' });
@@ -510,15 +542,26 @@ async function syncJiraNow(input: JiraConnectInput) {
   return connectorStates.read('jira', defaultJiraState);
 }
 
-async function syncGitHubNow(login: string, token: string) {
-  const result = await syncGitHubItems(login, token);
+async function syncGitHubNow(login: string, repos: string[], token: string) {
+  const result = await syncGitHubItems(repos, token);
   const secretRef = connectorStates.readSecretRef('github');
   if (!result.ok) {
-    connectorStates.write('github', { status: 'error', config: { login }, lastSyncedAt: null, lastError: result.error ?? 'Sync failed.', items: [] }, secretRef);
+    connectorStates.write('github', { status: 'error', config: { login, repos }, lastSyncedAt: null, lastError: result.error ?? 'Sync failed.', items: [] }, secretRef);
   } else {
-    connectorStates.write('github', { status: 'connected', config: { login }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
+    connectorStates.write('github', { status: 'connected', config: { login, repos }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
   }
   return connectorStates.read('github', defaultGitHubState);
+}
+
+async function syncSlackNow(team: string, channels: string[], token: string) {
+  const result = await syncSlackItems(channels, token);
+  const secretRef = connectorStates.readSecretRef('slack');
+  if (!result.ok) {
+    connectorStates.write('slack', { status: 'error', config: { team, channels }, lastSyncedAt: null, lastError: result.error ?? 'Sync failed.', items: [] }, secretRef);
+  } else {
+    connectorStates.write('slack', { status: 'connected', config: { team, channels }, lastSyncedAt: new Date().toISOString(), lastError: null, items: result.value ?? [] }, secretRef);
+  }
+  return connectorStates.read('slack', defaultSlackState);
 }
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

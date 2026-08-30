@@ -119,12 +119,15 @@ export interface GitHubItem {
 
 export interface GitHubConnectInput {
   token: string;
+  /** Plain text, comma- or newline-separated "owner/repo" entries — like Jira's saved-search field,
+   * typing one more repo is just typing, not a repeatable form-field management task. */
+  repos: string;
 }
 
 export interface GitHubState {
   id: 'github';
   status: ConnectionStatus;
-  config: { login: string } | null;
+  config: { login: string; repos: string[] } | null;
   lastSyncedAt: string | null;
   lastError: string | null;
   items: GitHubItem[];
@@ -132,6 +135,33 @@ export interface GitHubState {
 
 export const defaultGitHubState: GitHubState = {
   id: 'github', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
+};
+
+export interface SlackItem {
+  channel: string;
+  author: string;
+  preview: string;
+  ts: string;
+  url: string;
+}
+
+export interface SlackConnectInput {
+  token: string;
+  /** Plain text, comma- or newline-separated channel names (no leading #) — same pattern as GitHub's repo list. */
+  channels: string;
+}
+
+export interface SlackState {
+  id: 'slack';
+  status: ConnectionStatus;
+  config: { team: string; channels: string[] } | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  items: SlackItem[];
+}
+
+export const defaultSlackState: SlackState = {
+  id: 'slack', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
 };
 
 export const defaultJiraState: ConnectorState = {
@@ -287,10 +317,10 @@ export const connectorCatalog: ConnectorManifest[] = [
   { id: 'outlook', name: 'Microsoft Outlook', status: 'available', summary: 'Unread count and selected message metadata.', auth: 'Microsoft public-client OAuth with PKCE', reads: 'Inbox count and selected message metadata', permissions: ['Mail.Read'], adminApproval: true, apiToken: false, setupTime: '10–20 minutes', officialSetupUrl: 'https://learn.microsoft.com/en-us/entra/identity-platform/scenario-desktop-app-configuration', retention: 'Only selected card fields; disconnect clears the cache.' },
   { id: 'jira', name: 'Jira Service Management', status: 'available', summary: 'A selected queue or saved read-only JQL query.', auth: 'Installer-supplied Atlassian API token', reads: 'Ticket key, summary, status, priority, requester', permissions: ['Read-only adapter'], adminApproval: false, apiToken: true, setupTime: '5–10 minutes', officialSetupUrl: 'https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/', retention: 'Selected ticket fields only; disconnect clears the cache.' },
   { id: 'teams', name: 'Microsoft Teams', status: 'planned', summary: 'Potential Teams mentions and activity card.', auth: 'Microsoft Graph public-client OAuth', reads: 'No data is read', permissions: [], adminApproval: true, apiToken: false, setupTime: 'Not available yet', officialSetupUrl: 'https://learn.microsoft.com/en-us/graph/auth-v2-user', retention: 'No data is collected until an adapter is approved.', notReadyReason: noAdapterReason },
-  { id: 'github', name: 'GitHub', status: 'available', summary: 'Open issues and pull requests assigned to or mentioning you.', auth: 'Installer-supplied fine-grained personal access token', reads: 'Issue and pull request title, state, and URL', permissions: ['Issues: Read-only', 'Pull requests: Read-only'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens', retention: 'Only selected fields; disconnect clears the cache.' },
+  { id: 'github', name: 'GitHub', status: 'available', summary: 'Open issues and pull requests from the repositories you list.', auth: 'Installer-supplied fine-grained personal access token', reads: 'Issue and pull request title, state, and URL from the repos you specify', permissions: ['Issues: Read-only', 'Pull requests: Read-only'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens', retention: 'Only selected fields; disconnect clears the cache.' },
   { id: 'miro', name: 'Miro', status: 'planned', summary: 'Potential Miro board activity card.', auth: 'Installer-owned OAuth app', reads: 'No data is read', permissions: [], adminApproval: false, apiToken: false, setupTime: 'Not available yet', officialSetupUrl: 'https://developers.miro.com/docs/getting-started-with-oauth', retention: 'No data is collected until an adapter is approved.', notReadyReason: secretBrokerReason },
+  { id: 'slack', name: 'Slack', status: 'available', summary: 'Recent message previews from the public channels you list.', auth: 'Installer-supplied Bot User OAuth Token from a Slack app you create in your own workspace', reads: 'Channel name, message author, a short text preview, and a link — from the channels you specify', permissions: ['channels:history', 'channels:read'], adminApproval: false, apiToken: true, setupTime: '10–15 minutes', officialSetupUrl: 'https://api.slack.com/authentication/basics', retention: 'Only selected fields; disconnect clears the cache.' },
   ...([
-    ['Slack', 'message and channel activity'],
     ['Notion', 'recent pages'],
     ['Linear', 'issues'],
     ['Asana', 'tasks'],

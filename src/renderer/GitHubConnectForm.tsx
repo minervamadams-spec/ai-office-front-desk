@@ -5,10 +5,10 @@ import { Dismissible } from './CatalogHelpers';
 export function GitHubConnectForm({ onConnected, onSkip, dismissedNotices, onDismissNotice }: {
   onConnected: () => void; onSkip?: () => void; dismissedNotices: string[]; onDismissNotice: (id: string) => void;
 }) {
-  const [input, setInput] = useState<GitHubConnectInput>({ token: '' });
+  const [input, setInput] = useState<GitHubConnectInput>({ token: '', repos: '' });
   const [testResult, setTestResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const canTest = input.token.trim().length > 0;
+  const canTest = input.token.trim().length > 0 && input.repos.trim().length > 0;
 
   async function runTest() {
     setBusy(true); setTestResult(null);
@@ -29,7 +29,9 @@ export function GitHubConnectForm({ onConnected, onSkip, dismissedNotices, onDis
       This app never charges you anything. GitHub API requests made with your token count against your own account's rate limits.
     </Dismissible>
     <p className="intro">Create a fine-grained personal access token with read-only Issues and Pull requests permissions, then paste it here — it stays only in this computer's secure storage, and you can revoke it at GitHub any time.</p>
-    <label>Personal access token<input type="password" value={input.token} onChange={(e) => setInput({ token: e.target.value })} placeholder="github_pat_…"/></label>
+    <label>Personal access token<input type="password" value={input.token} onChange={(e) => setInput({ ...input, token: e.target.value })} placeholder="github_pat_…"/></label>
+    <label>Repositories to track<textarea value={input.repos} onChange={(e) => setInput({ ...input, repos: e.target.value })} placeholder={'owner/repo\nanother-owner/another-repo'} rows={3}/></label>
+    <p className="intro" style={{ marginTop: -4 }}>One per line (or comma-separated) as <code>owner/repo</code> — e.g. <code>octocat/hello-world</code>.</p>
     {testResult && <p className="form-status">{testResult}</p>}
     <div className="actions">
       <button disabled={!canTest || busy} onClick={() => void runTest()}>{busy ? 'Checking…' : 'Test connection'}</button>

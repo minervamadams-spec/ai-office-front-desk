@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
-import type { ConnectorManifest, ConnectorState, GoogleState, OutlookState, GitHubState } from '../shared/contracts';
+import type { ConnectorManifest, ConnectorState, GoogleState, OutlookState, GitHubState, SlackState } from '../shared/contracts';
 import { JiraConnectForm } from './JiraConnectForm';
 import { GoogleConnectForm } from './GoogleConnectForm';
 import { OutlookConnectForm } from './OutlookConnectForm';
 import { GitHubConnectForm } from './GitHubConnectForm';
+import { SlackConnectForm } from './SlackConnectForm';
 import { statusLabelFor, statusClassFor, NotReadyDetails } from './CatalogHelpers';
 
 /** The searchable "browse and connect a service" grid — shared by Settings and the first-run wizard.
  * Purely a configuration surface: it never appears on the live dashboard (see S1 feedback). */
-export function ServiceCatalogGrid({ catalog, jira, google, outlook, github, dismissedNotices, onDismissNotice, showSearch = true }: {
-  catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; github: GitHubState;
+export function ServiceCatalogGrid({ catalog, jira, google, outlook, github, slack, dismissedNotices, onDismissNotice, showSearch = true }: {
+  catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; github: GitHubState; slack: SlackState;
   dismissedNotices: string[]; onDismissNotice: (id: string) => void; showSearch?: boolean;
 }) {
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -19,7 +20,8 @@ export function ServiceCatalogGrid({ catalog, jira, google, outlook, github, dis
     jira.status === 'connected' ? 'jira' : null,
     google.status === 'connected' ? 'google' : null,
     outlook.status === 'connected' ? 'outlook' : null,
-    github.status === 'connected' ? 'github' : null
+    github.status === 'connected' ? 'github' : null,
+    slack.status === 'connected' ? 'slack' : null
   ].filter((id): id is string => id !== null));
 
   return <>
@@ -38,6 +40,7 @@ export function ServiceCatalogGrid({ catalog, jira, google, outlook, github, dis
       {service.id === 'google' && connecting === 'google' && google.status !== 'connected' && <GoogleConnectForm onConnected={() => setConnecting(null)} dismissedNotices={dismissedNotices} onDismissNotice={onDismissNotice}/>}
       {service.id === 'outlook' && connecting === 'outlook' && outlook.status !== 'connected' && <OutlookConnectForm onConnected={() => setConnecting(null)} dismissedNotices={dismissedNotices} onDismissNotice={onDismissNotice}/>}
       {service.id === 'github' && connecting === 'github' && github.status !== 'connected' && <GitHubConnectForm onConnected={() => setConnecting(null)} dismissedNotices={dismissedNotices} onDismissNotice={onDismissNotice}/>}
+      {service.id === 'slack' && connecting === 'slack' && slack.status !== 'connected' && <SlackConnectForm onConnected={() => setConnecting(null)} dismissedNotices={dismissedNotices} onDismissNotice={onDismissNotice}/>}
     </article>)}</div>
   </>;
 }

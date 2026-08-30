@@ -3,9 +3,10 @@ import type {
   ConnectorState, ConnectorManifest, DeskDesign, DeskProfile, JiraConnectInput,
   GoogleState, GoogleConnectInput, OutlookState, OutlookConnectInput,
   WeatherState, WeatherConnectInput, RssState, RssConnectInput, ChromeProfileInfo,
-  GitHubState, GitHubConnectInput
+  GitHubState, GitHubConnectInput, SlackState, SlackConnectInput
 } from '../shared/contracts';
 import type { AdapterResult as GitHubAdapterResult } from '../main/adapters/github-adapter';
+import type { AdapterResult as SlackAdapterResult } from '../main/adapters/slack-adapter';
 import type { AdapterResult } from '../main/adapters/jira-adapter';
 
 const api = {
@@ -38,6 +39,13 @@ const api = {
     connect: (input: GitHubConnectInput): Promise<GitHubState> => ipcRenderer.invoke('connector:github:connect', input),
     sync: (): Promise<GitHubState> => ipcRenderer.invoke('connector:github:sync'),
     disconnect: (): Promise<GitHubState> => ipcRenderer.invoke('connector:github:disconnect')
+  },
+  slack: {
+    state: (): Promise<SlackState> => ipcRenderer.invoke('connector:slack:state'),
+    test: (input: SlackConnectInput): Promise<SlackAdapterResult<{ team: string }>> => ipcRenderer.invoke('connector:slack:test', input),
+    connect: (input: SlackConnectInput): Promise<SlackState> => ipcRenderer.invoke('connector:slack:connect', input),
+    sync: (): Promise<SlackState> => ipcRenderer.invoke('connector:slack:sync'),
+    disconnect: (): Promise<SlackState> => ipcRenderer.invoke('connector:slack:disconnect')
   },
   google: {
     state: (): Promise<GoogleState> => ipcRenderer.invoke('connector:google:state'),
