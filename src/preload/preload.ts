@@ -4,12 +4,13 @@ import type {
   GoogleState, GoogleConnectInput, OutlookState, OutlookConnectInput,
   WeatherState, WeatherConnectInput, RssState, RssConnectInput, ChromeProfileInfo,
   GitHubState, GitHubConnectInput, SlackState, SlackConnectInput, TeamsState, TeamsConnectInput,
-  NotionState, NotionConnectInput, LinearState, LinearConnectInput
+  NotionState, NotionConnectInput, LinearState, LinearConnectInput, AsanaState, AsanaConnectInput
 } from '../shared/contracts';
 import type { AdapterResult as GitHubAdapterResult } from '../main/adapters/github-adapter';
 import type { AdapterResult as SlackAdapterResult } from '../main/adapters/slack-adapter';
 import type { AdapterResult as NotionAdapterResult } from '../main/adapters/notion-adapter';
 import type { AdapterResult as LinearAdapterResult } from '../main/adapters/linear-adapter';
+import type { AdapterResult as AsanaAdapterResult } from '../main/adapters/asana-adapter';
 import type { AdapterResult } from '../main/adapters/jira-adapter';
 
 const api = {
@@ -69,6 +70,13 @@ const api = {
     connect: (input: LinearConnectInput): Promise<LinearState> => ipcRenderer.invoke('connector:linear:connect', input),
     sync: (): Promise<LinearState> => ipcRenderer.invoke('connector:linear:sync'),
     disconnect: (): Promise<LinearState> => ipcRenderer.invoke('connector:linear:disconnect')
+  },
+  asana: {
+    state: (): Promise<AsanaState> => ipcRenderer.invoke('connector:asana:state'),
+    test: (input: AsanaConnectInput): Promise<AsanaAdapterResult<{ name: string }>> => ipcRenderer.invoke('connector:asana:test', input),
+    connect: (input: AsanaConnectInput): Promise<AsanaState> => ipcRenderer.invoke('connector:asana:connect', input),
+    sync: (): Promise<AsanaState> => ipcRenderer.invoke('connector:asana:sync'),
+    disconnect: (): Promise<AsanaState> => ipcRenderer.invoke('connector:asana:disconnect')
   },
   google: {
     state: (): Promise<GoogleState> => ipcRenderer.invoke('connector:google:state'),

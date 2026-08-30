@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { ConnectorManifest, ConnectorState, GoogleState, OutlookState, GitHubState, SlackState, TeamsState, NotionState, LinearState } from '../shared/contracts';
+import type { ConnectorManifest, ConnectorState, GoogleState, OutlookState, GitHubState, SlackState, TeamsState, NotionState, LinearState, AsanaState } from '../shared/contracts';
 import { JiraConnectForm } from './JiraConnectForm';
 import { GoogleConnectForm } from './GoogleConnectForm';
 import { OutlookConnectForm } from './OutlookConnectForm';
@@ -8,12 +8,13 @@ import { SlackConnectForm } from './SlackConnectForm';
 import { TeamsConnectForm } from './TeamsConnectForm';
 import { NotionConnectForm } from './NotionConnectForm';
 import { LinearConnectForm } from './LinearConnectForm';
+import { AsanaConnectForm } from './AsanaConnectForm';
 import { statusLabelFor, statusClassFor, NotReadyDetails } from './CatalogHelpers';
 
 /** The searchable "browse and connect a service" grid — shared by Settings and the first-run wizard.
  * Purely a configuration surface: it never appears on the live dashboard (see S1 feedback). */
-export function ServiceCatalogGrid({ catalog, jira, google, outlook, github, slack, teams, notion, linear, dismissedNotices, onDismissNotice, showSearch = true }: {
-  catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; github: GitHubState; slack: SlackState; teams: TeamsState; notion: NotionState; linear: LinearState;
+export function ServiceCatalogGrid({ catalog, jira, google, outlook, github, slack, teams, notion, linear, asana, dismissedNotices, onDismissNotice, showSearch = true }: {
+  catalog: ConnectorManifest[]; jira: ConnectorState; google: GoogleState; outlook: OutlookState; github: GitHubState; slack: SlackState; teams: TeamsState; notion: NotionState; linear: LinearState; asana: AsanaState;
   dismissedNotices: string[]; onDismissNotice: (id: string) => void; showSearch?: boolean;
 }) {
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -27,7 +28,8 @@ export function ServiceCatalogGrid({ catalog, jira, google, outlook, github, sla
     slack.status === 'connected' ? 'slack' : null,
     teams.status === 'connected' ? 'teams' : null,
     notion.status === 'connected' ? 'notion' : null,
-    linear.status === 'connected' ? 'linear' : null
+    linear.status === 'connected' ? 'linear' : null,
+    asana.status === 'connected' ? 'asana' : null
   ].filter((id): id is string => id !== null));
 
   return <>
@@ -50,6 +52,7 @@ export function ServiceCatalogGrid({ catalog, jira, google, outlook, github, sla
       {service.id === 'teams' && connecting === 'teams' && teams.status !== 'connected' && <TeamsConnectForm onConnected={() => setConnecting(null)} dismissedNotices={dismissedNotices} onDismissNotice={onDismissNotice}/>}
       {service.id === 'notion' && connecting === 'notion' && notion.status !== 'connected' && <NotionConnectForm onConnected={() => setConnecting(null)} dismissedNotices={dismissedNotices} onDismissNotice={onDismissNotice}/>}
       {service.id === 'linear' && connecting === 'linear' && linear.status !== 'connected' && <LinearConnectForm onConnected={() => setConnecting(null)} dismissedNotices={dismissedNotices} onDismissNotice={onDismissNotice}/>}
+      {service.id === 'asana' && connecting === 'asana' && asana.status !== 'connected' && <AsanaConnectForm onConnected={() => setConnecting(null)} dismissedNotices={dismissedNotices} onDismissNotice={onDismissNotice}/>}
     </article>)}</div>
   </>;
 }

@@ -212,6 +212,30 @@ export const defaultLinearState: LinearState = {
   id: 'linear', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
 };
 
+export interface AsanaItem {
+  id: string;
+  title: string;
+  dueOn: string | null;
+  url: string;
+}
+
+export interface AsanaConnectInput {
+  token: string;
+}
+
+export interface AsanaState {
+  id: 'asana';
+  status: ConnectionStatus;
+  config: { name: string } | null;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  items: AsanaItem[];
+}
+
+export const defaultAsanaState: AsanaState = {
+  id: 'asana', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, items: []
+};
+
 export const defaultJiraState: ConnectorState = {
   id: 'jira', status: 'disconnected', config: null, lastSyncedAt: null, lastError: null, tickets: []
 };
@@ -396,8 +420,8 @@ export const connectorCatalog: ConnectorManifest[] = [
   { id: 'slack', name: 'Slack', status: 'available', summary: 'Recent message previews from the public channels you list.', auth: 'Installer-supplied Bot User OAuth Token from a Slack app you create in your own workspace', reads: 'Channel name, message author, a short text preview, and a link — from the channels you specify', permissions: ['channels:history', 'channels:read'], adminApproval: false, apiToken: true, setupTime: '10–15 minutes', officialSetupUrl: 'https://api.slack.com/authentication/basics', retention: 'Only selected fields; disconnect clears the cache.' },
   { id: 'notion', name: 'Notion', status: 'available', summary: 'Recently edited pages you\'ve shared with your own Notion integration.', auth: 'Installer-supplied internal integration secret from your own Notion workspace — no OAuth handshake needed', reads: 'Page title, last-edited time, and URL — only for pages you share with the integration', permissions: ['Read content'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://developers.notion.com/docs/authorization', retention: 'Only selected fields; disconnect clears the cache.' },
   { id: 'linear', name: 'Linear', status: 'available', summary: 'Issues currently assigned to you.', auth: 'Installer-supplied Linear personal API key', reads: 'Issue identifier, title, state, and URL', permissions: ['Read-only adapter'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://linear.app/developers/api#personal-api-keys', retention: 'Only selected fields; disconnect clears the cache.' },
+  { id: 'asana', name: 'Asana', status: 'available', summary: 'Incomplete tasks assigned to you, across every workspace you belong to.', auth: 'Installer-supplied Asana personal access token', reads: 'Task title, due date, and URL', permissions: ['Read-only adapter'], adminApproval: false, apiToken: true, setupTime: '5 minutes', officialSetupUrl: 'https://developers.asana.com/docs/personal-access-token', retention: 'Only selected fields; disconnect clears the cache.' },
   ...([
-    ['Asana', 'tasks'],
     ['Trello', 'board activity']
   ] as const).map(([name, what]) => ({ id: name.toLowerCase(), name, status: 'planned' as const, summary: `Potential ${name} ${what} card.`, auth: 'To be determined', reads: 'No data is read', permissions: [], adminApproval: false, apiToken: false, setupTime: 'Not available yet', retention: 'No data is collected until an adapter is approved.', notReadyReason: noAdapterReason }))
 ];

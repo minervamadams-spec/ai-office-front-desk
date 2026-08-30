@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.0 — 2026-08-30 (unsigned)
+
+### Added
+
+- **Asana is now a real, working connector** — the sixth. A personal access token from your own
+  account, no OAuth needed. Shows incomplete tasks assigned to you across every workspace you belong
+  to — title, due date, and a link.
+
 ## 0.9.0 — 2026-08-30 (unsigned)
 
 ### Added
