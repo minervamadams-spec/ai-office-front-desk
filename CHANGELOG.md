@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.0 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **"Launch at Login" is now reachable regardless of which desk you're using.** It only ever had an
+  IPC handler that the original renderer's preload bridge called — anyone on the generic dashboard
+  (most installs) had no way to reach this setting at all. Now a native app-menu checkbox item
+  (macOS: app menu; Windows/Linux: Window menu) that works identically either way.
+
 ## 0.14.0 — 2026-08-30 (unsigned)
 
 ### Added

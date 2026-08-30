@@ -269,11 +269,24 @@ function buildApplicationMenu(): void {
     copyright: 'Local-first — your data stays on this computer.'
   });
   const isMac = process.platform === 'darwin';
+  // "Launch at Login" only ever had an IPC handler (settings:get/set-launch-at-login), which only
+  // the old built-in renderer's preload bridge calls — a bundled/generic-dashboard window has no
+  // IPC bridge to it at all (it's a loadURL'd web page, not the preload-integrated renderer), so
+  // this setting was completely unreachable for anyone on that path. A native menu item works
+  // identically regardless of which desk is showing, with no bridge needed.
+  // A fresh descriptor per placement — Electron menu items shouldn't be the same object reused in
+  // two template positions.
+  const makeLaunchAtLoginItem = (): Electron.MenuItemConstructorOptions => ({
+    label: 'Launch at Login',
+    type: 'checkbox',
+    checked: app.getLoginItemSettings().openAtLogin,
+    click: (menuItem) => app.setLoginItemSettings({ openAtLogin: menuItem.checked })
+  });
   const template: Electron.MenuItemConstructorOptions[] = [
-    ...(isMac ? [{ label: app.name, submenu: [{ role: 'about' as const }, { type: 'separator' as const }, { role: 'services' as const }, { type: 'separator' as const }, { role: 'hide' as const }, { role: 'hideOthers' as const }, { role: 'unhide' as const }, { type: 'separator' as const }, { role: 'quit' as const }] }] : []),
+    ...(isMac ? [{ label: app.name, submenu: [{ role: 'about' as const }, { type: 'separator' as const }, makeLaunchAtLoginItem(), { type: 'separator' as const }, { role: 'services' as const }, { type: 'separator' as const }, { role: 'hide' as const }, { role: 'hideOthers' as const }, { role: 'unhide' as const }, { type: 'separator' as const }, { role: 'quit' as const }] }] : []),
     { label: 'Edit', submenu: [{ role: 'undo' as const }, { role: 'redo' as const }, { type: 'separator' as const }, { role: 'cut' as const }, { role: 'copy' as const }, { role: 'paste' as const }, { role: 'selectAll' as const }] },
     { label: 'View', submenu: [{ role: 'reload' as const }, { role: 'toggleDevTools' as const }, { type: 'separator' as const }, { role: 'resetZoom' as const }, { role: 'zoomIn' as const }, { role: 'zoomOut' as const }, { type: 'separator' as const }, { role: 'togglefullscreen' as const }] },
-    { label: 'Window', submenu: [{ role: 'minimize' as const }, { role: 'close' as const }] },
+    { label: 'Window', submenu: [...(isMac ? [] : [makeLaunchAtLoginItem(), { type: 'separator' as const }]), { role: 'minimize' as const }, { role: 'close' as const }] },
     ...(isMac ? [] : [{ label: 'Help', submenu: [{ label: 'About AI Office Front Desk', click: () => app.showAboutPanel() }] }])
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
