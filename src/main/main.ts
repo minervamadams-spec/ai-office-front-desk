@@ -117,9 +117,15 @@ async function listChromeProfiles(): Promise<ChromeProfileInfo[]> {
   }
 }
 
+/** Checks the actual page this app is about to loadURL() into the window — not a peripheral API
+ * route. /api/desk-preferences specifically has its own built-in fallback for a not-yet-seeded
+ * instance, so it returns 200 almost the instant the HTTP server starts listening, well before
+ * portfolio-dashboard's first build.js run has finished writing dist/index.html. Polling that
+ * route let this function report "available" while the root path still 404'd — reproduced as a
+ * real "Not found" page on a genuinely fresh machine with no prior build ever run. */
 async function dashboardIsAvailable(url: string): Promise<boolean> {
   try {
-    const response = await fetch(`${url}/api/desk-preferences`);
+    const response = await fetch(url);
     return response.ok;
   } catch {
     return false;

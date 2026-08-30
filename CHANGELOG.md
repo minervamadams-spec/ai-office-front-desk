@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.15.1 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **A genuinely fresh install could show a bare "Not found" page instead of the wizard.** The
+  readiness check the app used before displaying the dashboard was polling an API route that
+  reports "ready" slightly before the dashboard's very first build actually finishes writing its
+  page — a real race, reproduced and confirmed on a machine with no prior install. Now checks the
+  actual page instead.
+- Bundles portfolio-dashboard's own fixes for stale browser caching (the generic dashboard's
+  JS/CSS could get stuck on an old cached version) and a hardcoded internal port that could break
+  the "Connect second Gmail account" flow.
+
 ## 0.15.0 — 2026-08-30 (unsigned)
 
 ### Fixed
