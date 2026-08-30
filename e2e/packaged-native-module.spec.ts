@@ -20,7 +20,10 @@ test('the real packaged app (not just the dev-mode build) starts and persists da
       ...process.env,
       FRONT_DESK_TEST_USER_DATA_DIR: userDataDir,
       FRONT_DESK_DASHBOARD_ROOT: path.join(userDataDir, 'no-dashboard-here'),
-      FRONT_DESK_DASHBOARD_URL: 'http://127.0.0.1:1'
+      FRONT_DESK_DASHBOARD_URL: 'http://127.0.0.1:1',
+      // Without this, the real packaged app now correctly finds the bundled generic dashboard (see
+      // forge.config.ts's afterCopy hook) and loads that instead of the old renderer this test checks.
+      FRONT_DESK_BUNDLED_DASHBOARD_ROOT: path.join(userDataDir, 'no-bundled-dashboard-here')
     }
   });
   const window = await app.firstWindow();

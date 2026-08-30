@@ -39,6 +39,25 @@ const config: ForgeConfig = {
         for (const dep of ['better-sqlite3', 'bindings', 'file-uri-to-path']) {
           fs.cpSync(path.resolve(__dirname, 'node_modules', dep), path.join(buildPath, 'node_modules', dep), { recursive: true });
         }
+        // Snapshot of portfolio-dashboard's generic-mode code (scripts/public + the empty-shape
+        // config/data examples — never her real config/data/secrets) for the fallback dashboard a
+        // generic install shows when no personal checkout is found (see main.ts's
+        // ensureBundledDashboardServer). buildPath is Contents/Resources/app; this needs to land at
+        // Contents/Resources/dashboard-bundle (a sibling of app/, matching process.resourcesPath at
+        // runtime), one level up from buildPath. Only bundled when the sibling checkout exists on
+        // the build machine — Minerva's own — so a CI or other machine without it just skips this,
+        // same as `npm run make` already behaves today for anything else that's optional.
+        const dashboardSource = path.resolve(__dirname, '..', 'portfolio-dashboard');
+        if (fs.existsSync(dashboardSource)) {
+          const dashboardTarget = path.join(buildPath, '..', 'dashboard-bundle');
+          for (const dir of ['scripts', 'public']) {
+            fs.cpSync(path.join(dashboardSource, dir), path.join(dashboardTarget, dir), { recursive: true });
+          }
+          fs.cpSync(path.join(dashboardSource, 'config', 'examples'), path.join(dashboardTarget, 'config', 'examples'), { recursive: true });
+          fs.cpSync(path.join(dashboardSource, 'data', 'examples'), path.join(dashboardTarget, 'data', 'examples'), { recursive: true });
+        } else {
+          console.warn('portfolio-dashboard checkout not found beside this repo — packaging without the bundled generic dashboard.');
+        }
         callback();
       }
     ]

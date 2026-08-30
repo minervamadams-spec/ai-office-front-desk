@@ -152,6 +152,50 @@ async function ensureDashboardServer(): Promise<DashboardStartResult> {
   return { status: 'unavailable', url };
 }
 
+/** Where the bundled snapshot of portfolio-dashboard's code lives — packaged by forge.config.ts's
+ * afterCopy hook into `resources/dashboard-bundle` at build time (from the sibling checkout on
+ * Minerva's own build machine), or the sibling repo directly for an unpackaged dev run. Only the
+ * generic-install fallback path uses this; Minerva's own real checkout (ensureDashboardServer above)
+ * is untouched by any of this and keeps behaving exactly as it did before. */
+function bundledDashboardRoot(): string {
+  // E2E tests override this to a nonexistent path — without it, a dev run on this exact machine
+  // would resolve straight to the real sibling portfolio-dashboard checkout (see e2e/helpers.ts),
+  // same reasoning as FRONT_DESK_DASHBOARD_ROOT above.
+  if (process.env.FRONT_DESK_BUNDLED_DASHBOARD_ROOT) return process.env.FRONT_DESK_BUNDLED_DASHBOARD_ROOT;
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'dashboard-bundle')
+    : path.resolve(app.getAppPath(), '..', 'portfolio-dashboard');
+}
+
+/** The ordinary case for anyone besides Minerva: no real portfolio-dashboard checkout at all. Spawns
+ * the bundled snapshot instead, pointed at its own userData subdirectory via DASHBOARD_INSTANCE_ROOT
+ * (see portfolio-dashboard/scripts/build.js) so it seeds empty and never touches her real files —
+ * there aren't any on this machine to touch in the first place. Reuses the same rebuild.lock
+ * discovery mechanism as ensureDashboardServer, just pointed at this instance's own directory. */
+async function ensureBundledDashboardServer(): Promise<DashboardStartResult> {
+  const bundleRoot = bundledDashboardRoot();
+  const serveScript = path.join(bundleRoot, 'scripts', 'serve.js');
+  if (!fs.existsSync(serveScript)) return { status: 'not-configured', url: '' };
+  const instanceRoot = path.join(app.getPath('userData'), 'dashboard-instance');
+  fs.mkdirSync(instanceRoot, { recursive: true });
+  const existingPort = discoverDashboardPort(instanceRoot);
+  const existingUrl = existingPort ? `http://127.0.0.1:${existingPort}` : null;
+  if (existingUrl && (await dashboardIsAvailable(existingUrl))) return { status: 'started', url: existingUrl };
+  dashboardServer = spawn(process.execPath, ['scripts/serve.js'], {
+    cwd: bundleRoot,
+    detached: false,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', DASHBOARD_INSTANCE_ROOT: instanceRoot },
+    stdio: 'ignore'
+  });
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const port = discoverDashboardPort(instanceRoot);
+    const url = port ? `http://127.0.0.1:${port}` : null;
+    if (url && (await dashboardIsAvailable(url))) return { status: 'started', url };
+  }
+  return { status: 'unavailable', url: '' };
+}
+
 async function createWindow(): Promise<void> {
   const window = new BrowserWindow({
     width: 1280, height: 860, minWidth: 920, minHeight: 680,
@@ -177,7 +221,21 @@ async function createWindow(): Promise<void> {
     await dialog.showMessageBox(window, {
       type: 'warning',
       message: 'Your local Portfolio Dashboard could not be started.',
-      detail: `Expected it at ${dashboardRoot()}. The standalone Front Desk will open instead.`
+      detail: `Expected it at ${dashboardRoot()}. Trying the generic Front Desk instead.`
+    });
+  }
+  // dashboardResult.status is 'not-configured' here for the ordinary installer (no personal
+  // checkout to find) — try the bundled generic dashboard before falling back to the old renderer.
+  const bundledResult = await ensureBundledDashboardServer();
+  if (bundledResult.status === 'started') {
+    void window.loadURL(bundledResult.url);
+    return;
+  }
+  if (bundledResult.status === 'unavailable') {
+    await dialog.showMessageBox(window, {
+      type: 'warning',
+      message: 'The Front Desk dashboard could not be started.',
+      detail: 'Falling back to the built-in desk.'
     });
   }
   void window.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));

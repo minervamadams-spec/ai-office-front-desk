@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.12.0 — 2026-08-30 (unsigned)
+
+### Changed
+
+- **The generic desk now comes from the same live codebase as Command Central**, instead of a
+  separately-maintained React renderer. When no personal Portfolio Dashboard checkout is found (the
+  ordinary case for anyone installing this), the app now starts a bundled, fully generic snapshot of
+  that same dashboard — seeded empty, with its own first-run wizard (name your desk, pick a look,
+  connect a service) and all 7 connectors (GitHub, Slack, Teams, Notion, Linear, Asana, Trello)
+  wired in and working. The old built-in renderer is kept only as a last-resort fallback if the
+  bundled dashboard fails to start.
+- Nothing changes for an install that already has its own Portfolio Dashboard checkout — that path
+  is untouched.
+
 ## 0.11.0 — 2026-08-30 (unsigned)
 
 ### Added

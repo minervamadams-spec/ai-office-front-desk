@@ -28,7 +28,10 @@ export async function launchApp(userDataDir: string = freshUserDataDir()): Promi
       // app load that instead of its own renderer, and every test below fails waiting for content
       // that was never going to appear.
       FRONT_DESK_DASHBOARD_ROOT: path.join(userDataDir, 'no-dashboard-here'),
-      FRONT_DESK_DASHBOARD_URL: 'http://127.0.0.1:1'
+      FRONT_DESK_DASHBOARD_URL: 'http://127.0.0.1:1',
+      // Same reasoning, for the bundled generic-dashboard fallback: without this, a dev run on this
+      // exact machine resolves straight to the real sibling portfolio-dashboard checkout.
+      FRONT_DESK_BUNDLED_DASHBOARD_ROOT: path.join(userDataDir, 'no-bundled-dashboard-here')
     }
   });
 }
