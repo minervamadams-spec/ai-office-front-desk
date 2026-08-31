@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.15.2 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **The desk accent color (blue/violet/teal) now actually looks different.** The setting worked
+  correctly, but only affected a couple of small text colors — nothing prominent enough to notice.
+  Now visibly colors your desk name and the active filter tab.
+- **Slack now supports private channels**, not just public ones — list a private channel's name the
+  same way, after inviting the bot to it with `/invite`. Needs `groups:read`/`groups:history` scopes
+  added to the bot token in addition to the existing `channels:read`/`channels:history`.
+
 ## 0.15.1 — 2026-08-30 (unsigned)
 
 ### Fixed

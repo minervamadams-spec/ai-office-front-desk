@@ -24,7 +24,7 @@ describe('slack adapter error mapping', () => {
     const fetchImpl = vi.fn();
     const result = await testSlackConnection('token', [], fetchImpl as unknown as typeof fetch);
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/at least one public channel/i);
+    expect(result.error).toMatch(/at least one channel/i);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -68,6 +68,16 @@ describe('slack adapter error mapping', () => {
     const result = await testSlackConnection('token', ['general'], fetchImpl as unknown as typeof fetch);
     expect(result.ok).toBe(true);
     expect(result.value).toEqual({ team: 'Acme' });
+  });
+
+  it('lists both public and private channel types, so a private channel the bot has been invited to resolves too', async () => {
+    const fetchImpl = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('auth.test')) return Promise.resolve(jsonResponse({ ok: true, team: 'Acme' }));
+      expect(url).toContain('types=public_channel%2Cprivate_channel');
+      return Promise.resolve(jsonResponse({ ok: true, channels: [{ id: 'C2', name: 'exec-private' }], response_metadata: { next_cursor: '' } }));
+    });
+    const result = await testSlackConnection('token', ['exec-private'], fetchImpl as unknown as typeof fetch);
+    expect(result.ok).toBe(true);
   });
 
   it('normalizes recent messages into a display-safe preview, truncated and never the full text', async () => {

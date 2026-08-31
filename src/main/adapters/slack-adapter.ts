@@ -22,9 +22,9 @@ function mapSlackError(code: string | undefined): string {
     case 'account_inactive':
       return 'That bot token was not accepted by Slack. Confirm it is still installed and has not been revoked.';
     case 'missing_scope':
-      return "This token is missing a required permission (scope) — add channels:history and channels:read to the Slack app's Bot Token Scopes, then reinstall it to the workspace.";
+      return "This token is missing a required permission (scope) — add channels:history, channels:read, groups:history, and groups:read to the Slack app's Bot Token Scopes, then reinstall it to the workspace.";
     case 'channel_not_found':
-      return 'One of those channels could not be found. Check the spelling, and that it is a public channel.';
+      return 'One of those channels could not be found. Check the spelling — and if it\'s private, invite the bot to it first with /invite in that channel.';
     case 'not_in_channel':
       return "The bot isn't a member of one of those channels yet — invite it with /invite in that channel, then try again.";
     default:
@@ -45,11 +45,15 @@ export function parseChannelList(raw: string): string[] {
   return [...new Set(raw.split(/[\n,]/).map((entry) => entry.trim().replace(/^#/, '')).filter((entry) => entry.length > 0))];
 }
 
+// Slack's conversations.list only ever returns private channels the bot is already a member of —
+// there is no way to discover a private channel it hasn't been invited to, by design. Listing both
+// types together means a mix of public and private channel names in one field just works, as long
+// as the bot has been /invite'd to each private one and the token has groups:read/groups:history.
 async function resolveChannelIds(names: string[], token: string, fetchImpl: FetchLike): Promise<AdapterResult<Map<string, string>>> {
   const found = new Map<string, string>();
   let cursor = '';
   do {
-    const params = new URLSearchParams({ types: 'public_channel', exclude_archived: 'true', limit: '200', cursor });
+    const params = new URLSearchParams({ types: 'public_channel,private_channel', exclude_archived: 'true', limit: '200', cursor });
     const response = await fetchImpl(`https://slack.com/api/conversations.list?${params}`, { headers: authHeaders(token) });
     const body = (await response.json()) as { ok: boolean; error?: string; channels?: Array<{ id: string; name: string }>; response_metadata?: { next_cursor?: string } };
     if (!body.ok) return { ok: false, error: mapSlackError(body.error) };
@@ -60,7 +64,7 @@ async function resolveChannelIds(names: string[], token: string, fetchImpl: Fetc
 }
 
 export async function testSlackConnection(token: string, channels: string[], fetchImpl: FetchLike = fetch): Promise<AdapterResult<{ team: string }>> {
-  if (channels.length === 0) return { ok: false, error: 'List at least one public channel name (without the #), e.g. general.' };
+  if (channels.length === 0) return { ok: false, error: 'List at least one channel name (without the #), e.g. general. Private channels work too, once the bot is invited.' };
   try {
     const authResponse = await fetchImpl('https://slack.com/api/auth.test', { method: 'POST', headers: authHeaders(token) });
     const auth = (await authResponse.json()) as { ok: boolean; error?: string; team?: string };
@@ -68,7 +72,7 @@ export async function testSlackConnection(token: string, channels: string[], fet
     const resolved = await resolveChannelIds(channels, token, fetchImpl);
     if (!resolved.ok) return { ok: false, error: resolved.error };
     const missing = channels.filter((name) => !resolved.value?.has(name));
-    if (missing.length > 0) return { ok: false, error: `Could not find channel(s): ${missing.join(', ')}. Check the spelling and that they're public.` };
+    if (missing.length > 0) return { ok: false, error: `Could not find channel(s): ${missing.join(', ')}. Check the spelling — private channels also need the bot invited first with /invite.` };
     return { ok: true, value: { team: auth.team ?? 'your workspace' } };
   } catch (cause) {
     return { ok: false, error: mapTransportError(cause) };
