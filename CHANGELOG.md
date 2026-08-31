@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.5 — 2026-08-31 (unsigned)
+
+### Fixed
+
+- **Teams sign-in failures now log the real reason from Microsoft**, not just a generic
+  "unexpected error (status N)." Launch the app from a terminal to see it in the console. The
+  message shown in Settings is unchanged — still a plain-English summary, never Microsoft's raw
+  error jargon.
+
 ## 0.15.4 — 2026-08-30 (unsigned)
 
 ### Added

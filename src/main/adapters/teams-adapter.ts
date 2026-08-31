@@ -16,6 +16,15 @@ function mapError(status: number | null, body?: string): string {
   return body?.match(/network|fetch failed|ENOTFOUND|ECONNREFUSED/i) ? 'Could not reach Microsoft. Check the network connection.' : 'Could not complete the request to Microsoft.';
 }
 
+/** Logs Microsoft's actual error/error_description to the console for diagnosis — never surfaced
+ * to the user, who would just see AADSTS jargon they can't act on. */
+async function logErrorBody(response: Response): Promise<void> {
+  try {
+    const body = (await response.json()) as { error?: string; error_description?: string };
+    if (body?.error || body?.error_description) console.error(`[teams] Microsoft token error (status ${response.status}):`, body.error, '-', body.error_description);
+  } catch { /* not JSON, nothing to log */ }
+}
+
 /** Strips HTML formatting from a Teams message body for a plain-text preview — this app never
  * renders connector content as HTML, so tags are removed rather than sanitized-and-rendered. */
 function stripHtml(html: string): string {
@@ -25,7 +34,7 @@ function stripHtml(html: string): string {
 async function fetchTeamsData(accessToken: string, fetchImpl: FetchLike): Promise<AdapterResult<TeamsItem[]>> {
   const headers = { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' };
   const response = await fetchImpl('https://graph.microsoft.com/v1.0/me/chats/getAllMessages?$top=20', { headers });
-  if (!response.ok) return { ok: false, error: mapError(response.status) };
+  if (!response.ok) { await logErrorBody(response); return { ok: false, error: mapError(response.status) }; }
   const body = (await response.json()) as { value?: Array<{ chatId?: string; from?: { user?: { displayName?: string } }; body?: { content?: string }; createdDateTime?: string; webUrl?: string }> };
   const items: TeamsItem[] = (body.value ?? [])
     .filter((message) => message.body?.content)
@@ -54,7 +63,7 @@ export async function connectTeams(input: TeamsConnectInput, fetchImpl: FetchLik
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ client_id: input.clientId, code, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: pkce.verifier, scope: SCOPE }).toString()
     });
-    if (!tokenResponse.ok) return { ok: false, error: mapError(tokenResponse.status) };
+    if (!tokenResponse.ok) { await logErrorBody(tokenResponse); return { ok: false, error: mapError(tokenResponse.status) }; }
     const tokenBody = (await tokenResponse.json()) as { access_token?: string; refresh_token?: string };
     if (!tokenBody.access_token || !tokenBody.refresh_token) return { ok: false, error: 'Microsoft did not return a refresh token. Confirm "offline_access" is permitted for this app registration.' };
 
@@ -72,7 +81,7 @@ export async function syncTeams(input: TeamsConnectInput, refreshToken: string, 
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ client_id: input.clientId, refresh_token: refreshToken, grant_type: 'refresh_token', scope: SCOPE }).toString()
     });
-    if (!tokenResponse.ok) return { ok: false, error: mapError(tokenResponse.status) };
+    if (!tokenResponse.ok) { await logErrorBody(tokenResponse); return { ok: false, error: mapError(tokenResponse.status) }; }
     const tokenBody = (await tokenResponse.json()) as { access_token?: string };
     if (!tokenBody.access_token) return { ok: false, error: 'Microsoft did not return a fresh access token.' };
     return fetchTeamsData(tokenBody.access_token, fetchImpl);
