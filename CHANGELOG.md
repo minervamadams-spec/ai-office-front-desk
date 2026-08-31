@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.15.3 — 2026-08-30 (unsigned)
+
+### Fixed
+
+- **The generic dashboard's Microsoft Teams connector could fail to complete sign-in** if the
+  server wasn't running on its default port (which happens routinely) — same root cause as the
+  earlier Google secondary-account fix, caught proactively before anyone hit it. The original
+  renderer's own Teams connector was never affected (it already builds its redirect URI from
+  whichever port it actually bound).
+
 ## 0.15.2 — 2026-08-30 (unsigned)
 
 ### Fixed
