@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.15.11 — 2026-08-31 (unsigned)
+
+### Added
+
+- **A feedback bubble.** A floating "Feedback" button on every page logs issues locally (until
+  you clear them) with an optional current-error-context attachment, and suggests starter entries
+  from whatever's already visibly broken — a connector in error status, a failed build. No live
+  AI call, no email-sending code, no OAuth scope change: "Email report" just hands everything to
+  your own mail client via a plain mailto: link, addressed to you on your own personal install
+  and left blank for a generic one to fill in themselves. "Copy report" is the fallback for a
+  list too long for a mailto: link's length limit.
+
 ## 0.15.10 — 2026-08-31 (unsigned)
 
 ### Fixed
