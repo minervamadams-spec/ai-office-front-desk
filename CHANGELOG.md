@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.15.10 — 2026-08-31 (unsigned)
+
+### Fixed
+
+- **Touch scrolling now works anywhere on the page**, not just in specific panels. The layout
+  locks to two independent-scroll columns — fine with a mouse, since you naturally hover the
+  panel you want, but a touch that lands on the header or a gap between panels used to do nothing.
+  Any touch/coarse-pointer device now gets natural whole-page scrolling.
+- **TikTok bundles and Engineering Handoffs now actually refresh** every 15 seconds, matching the
+  header's long-standing "refreshes every 15 sec" text, which nothing previously fulfilled for
+  these two panels. A queued TikTok bundle that finishes processing now shows up without a manual
+  reload.
+
 ## 0.15.9 — 2026-08-31 (unsigned)
 
 ### Fixed
