@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.9 — 2026-08-31 (unsigned)
+
+### Fixed
+
+- **Slack messages no longer show a raw user ID** (like `U02UAJP0F`) when no real display name is
+  available. The author is left blank instead — still shows a real name when the `users:read`
+  scope is present, same as before.
+
 ## 0.15.8 — 2026-08-31 (unsigned)
 
 ### Fixed

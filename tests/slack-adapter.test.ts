@@ -84,13 +84,14 @@ describe('slack adapter error mapping', () => {
     const longText = 'x'.repeat(300);
     const fetchImpl = vi.fn().mockImplementation((url: string) => {
       if (url.includes('conversations.list')) return Promise.resolve(jsonResponse({ ok: true, channels: [{ id: 'C1', name: 'general' }], response_metadata: { next_cursor: '' } }));
-      return Promise.resolve(jsonResponse({ ok: true, messages: [{ user: 'U1', text: longText, ts: '1699999999.000100' }] }));
+      if (url.includes('conversations.history')) return Promise.resolve(jsonResponse({ ok: true, messages: [{ user: 'U1', text: longText, ts: '1699999999.000100' }] }));
+      return Promise.resolve(jsonResponse({ ok: false, error: 'missing_scope' }));
     });
     const result = await syncSlackItems(['general'], 'token', fetchImpl as unknown as typeof fetch);
     expect(result.ok).toBe(true);
     expect(result.value).toHaveLength(1);
     expect(result.value?.[0].preview.length).toBeLessThanOrEqual(140);
-    expect(result.value?.[0]).toMatchObject({ channel: 'general', author: 'U1', ts: '1699999999.000100', url: 'https://slack.com/archives/C1/p1699999999000100' });
+    expect(result.value?.[0]).toMatchObject({ channel: 'general', author: '', ts: '1699999999.000100', url: 'https://slack.com/archives/C1/p1699999999000100' });
   });
 
   it('renders an empty item list rather than throwing when a channel has no recent messages', async () => {
@@ -103,7 +104,7 @@ describe('slack adapter error mapping', () => {
     expect(result.value).toEqual([]);
   });
 
-  it('falls back to the raw user id when the users:read scope is missing, rather than failing the sync', async () => {
+  it('leaves author blank (never the raw user id) when the users:read scope is missing, rather than failing the sync', async () => {
     const fetchImpl = vi.fn().mockImplementation((url: string) => {
       if (url.includes('conversations.list')) return Promise.resolve(jsonResponse({ ok: true, channels: [{ id: 'C1', name: 'general' }], response_metadata: { next_cursor: '' } }));
       if (url.includes('conversations.history')) return Promise.resolve(jsonResponse({ ok: true, messages: [{ user: 'U1', text: 'hi', ts: '1.1' }] }));
@@ -111,7 +112,7 @@ describe('slack adapter error mapping', () => {
     });
     const result = await syncSlackItems(['general'], 'token', fetchImpl as unknown as typeof fetch);
     expect(result.ok).toBe(true);
-    expect(result.value?.[0].author).toBe('U1');
+    expect(result.value?.[0].author).toBe('');
   });
 
   it('resolves a real display name and inline @-mentions when users:read is available', async () => {

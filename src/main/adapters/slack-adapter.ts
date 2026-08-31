@@ -127,7 +127,9 @@ export async function syncSlackItems(channels: string[], token: string, fetchImp
     // Preview only — never the full message, consistent with this app's metadata-over-content stance elsewhere.
     const items: SlackItem[] = rawMessages.map(({ name, channelId, message }) => ({
       channel: name,
-      author: (message.user && names.get(message.user)) || message.user || 'unknown',
+      // A raw Slack user id (U02UAJP0F) is meaningless to a person reading the dashboard — leave
+      // author blank rather than show it when no real name is available (no users:read scope).
+      author: (message.user && names.get(message.user)) || '',
       preview: formatPreview(message.text, names),
       ts: message.ts,
       url: `https://slack.com/archives/${channelId}/p${message.ts.replace('.', '')}`
