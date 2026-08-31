@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.6 — 2026-08-31 (unsigned)
+
+### Fixed
+
+- **The "Connected services" panel now updates on its own.** Fixing a connector in Desk Settings
+  (a separate part of the screen) never showed up there without a full page reload — nothing on
+  the generic dashboard actually auto-refreshed despite the header claiming it does every 15
+  seconds. The panel now genuinely polls every 15 seconds.
+
 ## 0.15.5 — 2026-08-31 (unsigned)
 
 ### Fixed
