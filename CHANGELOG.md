@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.15.8 — 2026-08-31 (unsigned)
+
+### Fixed
+
+- **A second Google account with Gmail disabled (Workspace, Drive-only) now shows its Drive files.**
+  The generic dashboard's own bundled build of the Google connection fetched Drive and Gmail
+  sequentially and let either one's failure discard data the other had already fetched — a
+  Workspace account with Gmail turned off showed nothing at all instead of just its Drive files.
+  The two are now fetched independently.
+
 ## 0.15.7 — 2026-08-31 (unsigned)
 
 ### Fixed
