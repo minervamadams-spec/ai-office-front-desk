@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.15.12 — 2026-08-31 (unsigned)
+
+### Added
+
+- **A read-only codebase-setup gap scanner**, folded into the Workspace Review panel as a new
+  category rather than a separate card. Inert on a generic install — this only ever runs against
+  Minerva's own tracked projects on her personal build.
+
+### Fixed
+
+- **Every card on the generic dashboard now refreshes live every 15 seconds**, not just the two
+  panels patched in earlier releases — a single periodic refresh cycle now covers the whole page,
+  with an explicit guard so it can't wipe an in-progress Note of the Day draft.
+- **The Crewsite Financials editor is a real form now**, not a raw JSON textarea — labeled fields
+  for invoices and POs, reconstructing the same data shape on save.
+
 ## 0.15.11 — 2026-08-31 (unsigned)
 
 ### Added

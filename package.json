@@ -1,7 +1,7 @@
 {
   "name": "ai-office-front-desk",
   "productName": "AI Office Front Desk",
-  "version": "0.15.11",
+  "version": "0.15.12",
   "private": true,
   "license": "UNLICENSED",
   "description": "A local-first, installer-owned desktop work desk.",
