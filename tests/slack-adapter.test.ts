@@ -102,4 +102,39 @@ describe('slack adapter error mapping', () => {
     expect(result.ok).toBe(true);
     expect(result.value).toEqual([]);
   });
+
+  it('falls back to the raw user id when the users:read scope is missing, rather than failing the sync', async () => {
+    const fetchImpl = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('conversations.list')) return Promise.resolve(jsonResponse({ ok: true, channels: [{ id: 'C1', name: 'general' }], response_metadata: { next_cursor: '' } }));
+      if (url.includes('conversations.history')) return Promise.resolve(jsonResponse({ ok: true, messages: [{ user: 'U1', text: 'hi', ts: '1.1' }] }));
+      return Promise.resolve(jsonResponse({ ok: false, error: 'missing_scope' }));
+    });
+    const result = await syncSlackItems(['general'], 'token', fetchImpl as unknown as typeof fetch);
+    expect(result.ok).toBe(true);
+    expect(result.value?.[0].author).toBe('U1');
+  });
+
+  it('resolves a real display name and inline @-mentions when users:read is available', async () => {
+    const fetchImpl = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('conversations.list')) return Promise.resolve(jsonResponse({ ok: true, channels: [{ id: 'C1', name: 'general' }], response_metadata: { next_cursor: '' } }));
+      if (url.includes('conversations.history')) return Promise.resolve(jsonResponse({ ok: true, messages: [{ user: 'U1', text: 'hey <@U1>, ping <@U2> too', ts: '1.1' }] }));
+      const id = new URL(url).searchParams.get('user');
+      return Promise.resolve(jsonResponse({ ok: true, user: { profile: { display_name: id === 'U1' ? 'Minerva' : 'Dahlia' } } }));
+    });
+    const result = await syncSlackItems(['general'], 'token', fetchImpl as unknown as typeof fetch);
+    expect(result.ok).toBe(true);
+    expect(result.value?.[0].author).toBe('Minerva');
+    expect(result.value?.[0].preview).toBe('hey @Minerva, ping @Dahlia too');
+  });
+
+  it('filters out channel_join and similar system messages', async () => {
+    const fetchImpl = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('conversations.list')) return Promise.resolve(jsonResponse({ ok: true, channels: [{ id: 'C1', name: 'general' }], response_metadata: { next_cursor: '' } }));
+      return Promise.resolve(jsonResponse({ ok: true, messages: [{ user: 'U1', text: '<@U1> has joined the channel', subtype: 'channel_join', ts: '1.1' }, { user: 'U2', text: 'real message', ts: '2.2' }] }));
+    });
+    const result = await syncSlackItems(['general'], 'token', fetchImpl as unknown as typeof fetch);
+    expect(result.ok).toBe(true);
+    expect(result.value).toHaveLength(1);
+    expect(result.value?.[0].preview).toBe('real message');
+  });
 });

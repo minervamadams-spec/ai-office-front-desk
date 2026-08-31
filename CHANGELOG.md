@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.15.7 — 2026-08-31 (unsigned)
+
+### Fixed
+
+- **Slack messages in the Connected Services panel are cleaner.** "X has joined the channel" and
+  similar system notices no longer appear as if they were real messages. Author now shows a real
+  display name instead of a raw Slack user ID, when the token has the `users:read` scope (falls
+  back silently to the ID otherwise — no setup required, just nicer when available). Inline
+  `@mentions` in message text are resolved the same way, and stray line breaks/whitespace are
+  collapsed.
+
 ## 0.15.6 — 2026-08-31 (unsigned)
 
 ### Fixed

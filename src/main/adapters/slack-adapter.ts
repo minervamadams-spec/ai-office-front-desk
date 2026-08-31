@@ -79,27 +79,59 @@ export async function testSlackConnection(token: string, channels: string[], fet
   }
 }
 
+// System messages ("X has joined the channel", topic/purpose changes) aren't real conversation
+// content — filtered out rather than shown as a message with a mention-syntax body.
+const NOISE_SUBTYPES = new Set(['channel_join', 'channel_leave', 'channel_topic', 'channel_purpose', 'channel_name', 'channel_archive', 'channel_unarchive', 'bot_add', 'bot_remove']);
+
+/** Best-effort real-name lookup: needs the separate users:read scope this connector doesn't
+ * require, so a missing scope (or any other failure) just falls back to the raw user ID rather
+ * than surfacing an error — this is a display nicety, not something that should ever block a sync. */
+async function resolveUserNames(userIds: Set<string>, token: string, fetchImpl: FetchLike): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  await Promise.all([...userIds].map(async (id) => {
+    try {
+      const response = await fetchImpl(`https://slack.com/api/users.info?${new URLSearchParams({ user: id })}`, { headers: authHeaders(token) });
+      const body = (await response.json()) as { ok: boolean; user?: { profile?: { display_name?: string }; real_name?: string } };
+      if (body.ok) names.set(id, body.user?.profile?.display_name || body.user?.real_name || id);
+    } catch { /* fall back to the raw id below */ }
+  }));
+  return names;
+}
+
+function formatPreview(text: string | undefined, names: Map<string, string>): string {
+  const withNames = (text ?? '').replace(/<@([A-Z0-9]+)>/g, (_match, id) => `@${names.get(id) || id}`);
+  return withNames.replace(/\s+/g, ' ').trim().slice(0, 140);
+}
+
 export async function syncSlackItems(channels: string[], token: string, fetchImpl: FetchLike = fetch): Promise<AdapterResult<SlackItem[]>> {
   try {
     const resolved = await resolveChannelIds(channels, token, fetchImpl);
     if (!resolved.ok) return { ok: false, error: resolved.error };
-    const items: SlackItem[] = [];
+    const rawMessages: Array<{ name: string; channelId: string; message: { user?: string; text?: string; ts: string; subtype?: string } }> = [];
     for (const [name, channelId] of resolved.value ?? []) {
       const params = new URLSearchParams({ channel: channelId, limit: '5' });
       const response = await fetchImpl(`https://slack.com/api/conversations.history?${params}`, { headers: authHeaders(token) });
-      const body = (await response.json()) as { ok: boolean; error?: string; messages?: Array<{ user?: string; text?: string; ts: string }> };
+      const body = (await response.json()) as { ok: boolean; error?: string; messages?: Array<{ user?: string; text?: string; ts: string; subtype?: string }> };
       if (!body.ok) return { ok: false, error: mapSlackError(body.error) };
       for (const message of body.messages ?? []) {
-        items.push({
-          channel: name,
-          author: message.user ?? 'unknown',
-          // Preview only — never the full message, consistent with this app's metadata-over-content stance elsewhere.
-          preview: (message.text ?? '').slice(0, 140),
-          ts: message.ts,
-          url: `https://slack.com/archives/${channelId}/p${message.ts.replace('.', '')}`
-        });
+        if (message.subtype && NOISE_SUBTYPES.has(message.subtype)) continue;
+        rawMessages.push({ name, channelId, message });
       }
     }
+    const userIds = new Set<string>();
+    for (const { message } of rawMessages) {
+      if (message.user) userIds.add(message.user);
+      for (const match of (message.text ?? '').matchAll(/<@([A-Z0-9]+)>/g)) userIds.add(match[1]);
+    }
+    const names = await resolveUserNames(userIds, token, fetchImpl);
+    // Preview only — never the full message, consistent with this app's metadata-over-content stance elsewhere.
+    const items: SlackItem[] = rawMessages.map(({ name, channelId, message }) => ({
+      channel: name,
+      author: (message.user && names.get(message.user)) || message.user || 'unknown',
+      preview: formatPreview(message.text, names),
+      ts: message.ts,
+      url: `https://slack.com/archives/${channelId}/p${message.ts.replace('.', '')}`
+    }));
     return { ok: true, value: items };
   } catch (cause) {
     return { ok: false, error: mapTransportError(cause) };
