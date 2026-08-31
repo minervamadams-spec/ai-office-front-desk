@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.4 — 2026-08-30 (unsigned)
+
+### Added
+
+- **The generic dashboard now shows what's actually connected.** Desk settings only ever had
+  config forms for each service — nothing displayed the result anywhere. A new "Connected
+  services" panel on the main dashboard lists live items (issues, messages, cards, etc.) from
+  every connector you've hooked up.
+
 ## 0.15.3 — 2026-08-30 (unsigned)
 
 ### Fixed
